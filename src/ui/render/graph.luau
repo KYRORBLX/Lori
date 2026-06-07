@@ -7,7 +7,7 @@
 local imports = {
 	TweenService = game:GetService("TweenService"),
 
-	Styles = require("../styles"),
+	Style = require("../styles").bars,
 }
 
 local Graph = {}
@@ -200,22 +200,6 @@ function Graph:drawColumns(card)
 	end
 end
 
-function Graph:build(card)
-	if card.style.build then
-		card.style.build(self, card)
-	else
-		self:buildColumns(card)
-	end
-end
-
-function Graph:draw(card)
-	if card.style.draw then
-		card.style.draw(self, card)
-	else
-		self:drawColumns(card)
-	end
-end
-
 function Graph:formatValue(card, value)
 	if card.format then
 		local ok, result = pcall(card.format, value)
@@ -310,7 +294,7 @@ function Graph:autoRange(card)
 end
 
 function Graph:redraw(card)
-	self:draw(card)
+	self:drawColumns(card)
 end
 
 function Graph:syncCard(card)
@@ -346,7 +330,7 @@ function Graph:make(name, options)
 	local card = {
 		name = name,
 		tone = options.tone or "trace",
-		style = imports.Styles.chart(options.style or "bars"),
+		style = imports.Style,
 		unit = options.unit or "",
 		format = options.format,
 		samples = {},
@@ -428,7 +412,7 @@ function Graph:make(name, options)
 	card.plot = plot
 	card.head = head
 
-	self:build(card)
+	self:buildColumns(card)
 	self:fitText(card)
 	self:syncCard(card)
 

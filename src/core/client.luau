@@ -28,23 +28,6 @@ local function resolveTemplate(templateOption)
 	return imports.Templates.Empty()
 end
 
-local function configFromOptions(options)
-	local configOptions = {}
-	if type(options) == "table" then
-		for key, value in options do
-			if key ~= "config" and key ~= "theme" and key ~= "template" then
-				configOptions[key] = value
-			end
-		end
-		if type(options.config) == "table" then
-			for key, value in options.config do
-				configOptions[key] = value
-			end
-		end
-	end
-	return imports.Config.merge(configOptions)
-end
-
 local function applyConfig(config, options)
 	if type(options) ~= "table" then
 		return
@@ -73,6 +56,12 @@ local function applyConfig(config, options)
 	end
 
 	imports.Config.applyAliases(config)
+end
+
+local function configFromOptions(options)
+	local configOptions = {}
+	applyConfig(configOptions, options)
+	return imports.Config.merge(configOptions)
 end
 
 local function normalizeEvent(event)
@@ -193,7 +182,7 @@ function Client:unmount()
 		provider:stop()
 	end
 
-	for _, watch in self.watches do
+	for _, watch in table.clone(self.watches) do
 		watch:disconnect()
 	end
 

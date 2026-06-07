@@ -6,12 +6,6 @@
 
 local Styles = {}
 
-Styles.Charts = {
-	bars = require("@self/bars"),
-}
-
-function Styles.chart(name)
-	return Styles.Charts[name] or Styles.Charts.bars
-end
+Styles.bars = require("@self/bars")
 
 return Styles
