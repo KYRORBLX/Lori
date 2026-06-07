@@ -1,0 +1,25 @@
+{
+  "name": "@kyrorblx/lori",
+  "version": "0.0.1",
+  "description": "Small Roblox debug UI library",
+  "author": "KYRORBLX <dullflowerr>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KYRORBLX/Lori.git"
+  },
+  "main": "src/init.luau",
+  "typings": "typings/index.d.ts",
+  "files": [
+    "src",
+    "typings",
+    "README.md",
+    "LICENSE"
+  ],
+  "license": "MIT",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  },
+  "scripts": {
+    "pack:test": "npm pack"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+Packages/
+sourcemap.json
+*.rbxlx
+*.rbxm
+*.rbxmx
+.tmp-*
+*.log
