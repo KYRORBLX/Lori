@@ -235,11 +235,13 @@ Graph options:
 - `failAt`: column turns error color at this value
 - `format`: custom display function
 
+The bar gradient uses the graph `tone` color. Change the tone or override that tone with `lori:setTheme(...)`.
+
 Graphs keep a rolling sample window. If no fixed `range` is provided, Lori auto-ranges from visible samples and adds padding so small changes are readable.
 
 The performance template includes ping, FPS, and memory graphs by default.
 
-## Performance Template
+## Speaking Of, The Performance Template!
 
 Lori starts empty unless you ask for the template:
 
