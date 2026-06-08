@@ -18,6 +18,39 @@ local imports = {
 local Client = {}
 Client.__index = Client
 
+local CLIENT_DOT_METHODS = {
+	"isActive",
+	"setTheme",
+	"setTemplate",
+	"mount",
+	"unmount",
+	"push",
+	"dismiss",
+	"begin",
+	"finish",
+	"record",
+	"time",
+	"measure",
+	"watch",
+	"graph",
+	"inspect",
+	"emit",
+	"channel",
+	"group",
+	"raycast",
+	"spherecast",
+	"blockcast",
+	"trace",
+	"info",
+	"phase",
+	"success",
+	"warn",
+	"fail",
+	"error",
+	"clear",
+	"destroy",
+}
+
 local function resolveTemplate(templateOption)
 	if type(templateOption) == "function" then
 		return templateOption()
@@ -73,7 +106,21 @@ end
 
 local function bindChannel(channel, method, scope)
 	channel[method] = function(self, action, fields, duration)
-		return self._client[method](self._client, scope, action, fields, duration)
+		local channelSelf = if self == channel then self else channel
+		local nextAction = if self == channel then action else self
+		return channelSelf._client[method](channelSelf._client, scope, nextAction, fields, duration)
+	end
+end
+
+local function bindDotMethods(object, source, methods)
+	for _, method in methods do
+		local callback = source[method]
+		object[method] = function(self, ...)
+			if self == object then
+				return callback(object, ...)
+			end
+			return callback(object, self, ...)
+		end
 	end
 end
 
@@ -116,6 +163,8 @@ function Client.new(options)
 		end
 		self:warn("runtime.perf", "slow", reportFields, 4)
 	end)
+
+	bindDotMethods(self, Client, CLIENT_DOT_METHODS)
 
 	return self
 end
@@ -273,6 +322,7 @@ function Client:watch(key, fields, options)
 	end
 
 	watch.connected = true
+	bindDotMethods(watch, watch, { "disconnect" })
 	self.watches[key] = watch
 
 	return watch
@@ -284,6 +334,7 @@ function Client:graph(name, options)
 		function noop:push() end
 		function noop:rescale() end
 		function noop:remove() end
+		bindDotMethods(noop, noop, { "push", "rescale", "remove" })
 		return noop
 	end
 
@@ -307,6 +358,8 @@ function Client:graph(name, options)
 	function handle:remove()
 		client.render:removeGraph(name)
 	end
+
+	bindDotMethods(handle, handle, { "push", "rescale", "remove" })
 
 	return handle
 end
@@ -366,6 +419,7 @@ function Client:channel(scope)
 	end
 
 	channel._client = self
+	bindDotMethods(channel, channel, { "watch", "time", "measure" })
 	self.channels[scope] = channel
 
 	return channel
