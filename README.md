@@ -49,7 +49,7 @@ Put `Lori.rbxm` in `ReplicatedStorage/Packages/Lori`, then require it from a `Lo
 local Lori = require(game.ReplicatedStorage.Packages.Lori)
 ```
 
-For roblox-ts:
+For roblox-ts/npm:
 
 ```sh
 npm install @kyrorblx/lori
@@ -57,6 +57,20 @@ npm install @kyrorblx/lori
 
 ```ts
 import Lori = require("@kyrorblx/lori");
+```
+
+For Wally:
+
+```toml
+[dependencies]
+Lori = "kyrorblx/lori@0.0.5"
+```
+
+For Pesde:
+
+```toml
+[dependencies]
+Lori = { name = "kyrorblx/lori", version = "^0.0.5", target = "roblox" }
 ```
 
 Lori is client-side. Put your demo or setup code in `StarterPlayerScripts`, `StarterGui`, or another client place. Server scripts should not mount the overlay because the UI lives in `PlayerGui`.

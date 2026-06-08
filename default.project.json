@@ -1,0 +1,16 @@
+{
+  "name": "Lori",
+  "tree": {
+    "$className": "ModuleScript",
+    "$path": "src/init.luau",
+    "core": {
+      "$path": "src/core"
+    },
+    "templates": {
+      "$path": "src/templates"
+    },
+    "ui": {
+      "$path": "src/ui"
+    }
+  }
+}

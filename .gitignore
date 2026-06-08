@@ -4,5 +4,6 @@ sourcemap.json
 *.rbxlx
 *.rbxm
 *.rbxmx
+*.zip
 .tmp-*
 *.log

@@ -1,0 +1,4 @@
+[tools]
+rojo = "rojo-rbx/rojo@7.6.1"
+wally = "UpliftGames/wally@0.3.2"
+pesde = "pesde-pkg/pesde@v0.7.3"
