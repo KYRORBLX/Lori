@@ -17,7 +17,7 @@
   ],
   "license": "MIT",
   "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
+    "access": "public"
   },
   "scripts": {
     "pack:test": "npm pack"
