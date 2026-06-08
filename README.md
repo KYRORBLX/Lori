@@ -63,7 +63,7 @@ For Wally:
 
 ```toml
 [dependencies]
-Lori = "kyrorblx/lori@0.0.5"
+Lori = "kyrorblx/lori@0.1.1"
 ```
 *We're still waiting for uplift games to approve us :(, give us a bit for wally!*
 
@@ -78,7 +78,7 @@ Lori has two layers:
 
 Use `Lori.create()` for real projects so different systems do not fight over one global overlay.
 
-Mounting creates a `ScreenGui` under `PlayerGui`. After that, traces and graphs create compact UI rows inside the top-right stack. If you call a trace before mounting, Lori mounts itself automatically.
+Mounting creates a `ScreenGui` under `PlayerGui`. After that, traces and graphs create compact UI rows inside the configured stack position. If you call a trace before mounting, Lori mounts itself automatically.
 
 By default, `studioOnly = true`, so Lori does nothing in live published servers unless you pass `studioOnly = false`.
 
@@ -247,6 +247,10 @@ The bar gradient uses the graph `tone` color. Change the tone or override that t
 
 Graphs keep a rolling sample window. If no fixed `range` is provided, Lori auto-ranges from visible samples and adds padding so small changes are readable.
 
+Graph labels show the current value plus `min`, `max`, and `avg` for the visible window.
+
+Hover a graph column to show a tooltip for that sample. While the tooltip is open, that graph visually pauses so the value does not move under your mouse. Moving away resumes it.
+
 The performance template includes ping, FPS, and memory graphs by default.
 
 ## Speaking Of, The Performance Template!
@@ -267,6 +271,35 @@ That adds:
 - ping graph
 - FPS graph
 - memory graph
+
+You can remove built-in template providers with `templateBlacklist`.
+
+```luau
+lori:mount(nil, {
+	studioOnly = false,
+	template = Lori.Templates.Performance,
+	templateBlacklist = Lori.Templates.ItemBlacklister.New().Memory().FPS(),
+})
+```
+
+That example keeps the frame/perf rows and ping graph, but removes the memory and FPS graphs.
+
+Plain string tables also work:
+
+```luau
+lori:mount(nil, {
+	template = Lori.Templates.Performance,
+	templateBlacklist = { "MemGraph", "FpsGraph" },
+})
+```
+
+Provider names:
+
+- `Frame`
+- `Pressure`
+- `PingGraph`
+- `FpsGraph`
+- `MemGraph`
 
 Use `Lori.Templates.Empty` if you want only your own rows.
 
@@ -295,12 +328,25 @@ Common options:
 - `maxItems`: max trace rows
 - `interval`: update delay in seconds, default `0.1`
 - `minInterval`: lowest allowed update delay, default `0.04`
-- `position`: top-right offset
+- `anchor`: stack position, default `tr`
+- `rightOffset`, `leftOffset`, `topOffset`, `bottomOffset`
+- `position`: legacy top-right offset alias
 - `width`: max row width, `0` means automatic
-- `fontSize`, `rowHeight`, `gap`, `padX`
+- `fontSize`, `rowHeight`, `gap`, `padX`, `cornerRadius`
 - `graphWidth`, `graphHeight`, `graphColumns`
 - `motionTime`, `exitTime`, `fadeTime`
 - `uiScale`, `scaleBaseWidth`, `minScale`, `maxScale`
+
+Anchors:
+
+- `tr` / `topRight` / `top-right`
+- `tl` / `topLeft` / `top-left`
+- `br` / `bottomRight` / `bottom-right`
+- `bl` / `bottomLeft` / `bottom-left`
+
+Bottom anchors stay pinned to the bottom and grow upward as rows appear.
+
+`cornerRadius` can be a scale value like `0.3` or a pixel value like `6`. Rows, graph cards, graph labels, and tooltips all share the same radius.
 
 You can pass config directly or under `config`; these are equivalent:
 

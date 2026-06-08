@@ -31,6 +31,8 @@ export type GraphOptions = {
 	range: { number }?,
 	warnAt: number?,
 	failAt: number?,
+	warnBelow: number?,
+	failBelow: number?,
 	format: ((number) -> any)?,
 }
 

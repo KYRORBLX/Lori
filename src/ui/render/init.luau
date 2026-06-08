@@ -58,6 +58,30 @@ function Render:viewportWidth()
 	return width
 end
 
+local function resolveAnchor(anchor)
+	anchor = string.lower(tostring(anchor or "tr"))
+
+	if anchor == "topright" or anchor == "top-right" then
+		anchor = "tr"
+	elseif anchor == "topleft" or anchor == "top-left" then
+		anchor = "tl"
+	elseif anchor == "bottomright" or anchor == "bottom-right" then
+		anchor = "br"
+	elseif anchor == "bottomleft" or anchor == "bottom-left" then
+		anchor = "bl"
+	end
+
+	if anchor == "tl" then
+		return Vector2.new(0, 0), UDim2.new(0, 0, 0, 0)
+	elseif anchor == "bl" then
+		return Vector2.new(0, 1), UDim2.new(0, 0, 1, 0)
+	elseif anchor == "br" then
+		return Vector2.new(1, 1), UDim2.new(1, 0, 1, 0)
+	end
+
+	return Vector2.new(1, 0), UDim2.new(1, 0, 0, 0)
+end
+
 function Render:scaleFactor()
 	if self.config.uiScale == false then
 		return 1
@@ -82,6 +106,40 @@ function Render:scaled(value)
 	return math.max(1, math.floor(value * self.scale + 0.5))
 end
 
+function Render:isLeftAligned()
+	return self.stack and self.stack.AnchorPoint.X == 0
+end
+
+function Render:rowAnchorPoint()
+	return if self:isLeftAligned() then Vector2.new(0, 0) else Vector2.new(1, 0)
+end
+
+function Render:rowX()
+	return if self:isLeftAligned() then 0 else 1
+end
+
+function Render:cornerRadius()
+	local radius = self.config.cornerRadius
+	if type(radius) == "number" then
+		if radius <= 1 then
+			return UDim.new(0, self:scaled(self.config.rowHeight * radius))
+		end
+
+		return UDim.new(0, self:scaled(radius))
+	end
+
+	return UDim.new(0, self:scaled(self.config.rowHeight * 0.3))
+end
+
+function Render:offscreenPosition(width)
+	local offset = self:offscreen(width)
+	if self:isLeftAligned() then
+		return UDim2.new(0, -offset, 0, 0)
+	end
+
+	return UDim2.new(1, offset, 0, 0)
+end
+
 function Render:viewportLimit()
 	return math.max(self:scaled(self.config.minWidth), self:viewportWidth() - self.config.rightOffset * 2 - 24)
 end
@@ -97,11 +155,23 @@ function Render:maxLineWidth()
 	return math.max(self:scaled(self.config.minWidth), math.min(configured, self:viewportLimit()))
 end
 
-function Render:updateStackWidth()
-	if self.stack then
-		self:updateScale()
-		self.stack.Size = UDim2.fromOffset(self:maxLineWidth(), self.stack.Size.Y.Offset)
+function Render:contentHeight()
+	local rowStep = self:scaled(self.config.rowHeight) + self:scaled(self.config.gap)
+	local rowCount = #self.items
+	local rowsHeight = rowCount > 0 and (rowCount * rowStep - self:scaled(self.config.gap)) or 0
+	return self:monitorOffset() + rowsHeight
+end
+
+function Render:updateStackSize()
+	if not self.stack then
+		return
 	end
+
+	self:updateScale()
+	local height = math.max(self:scaled(self.config.rowHeight), self:contentHeight())
+	self.motion:to(self.stack, "size", {
+		Size = UDim2.fromOffset(self:maxLineWidth(), height),
+	}, self.config.motionTime)
 end
 
 function Render:bindViewport()
@@ -164,10 +234,6 @@ function Render:monitorOffset()
 	return self:graphOffset() + monitorHeight
 end
 
-function Render:graphsTop()
-	return 0
-end
-
 function Render:graphOffset()
 	return self.graph and self.graph:height() or 0
 end
@@ -180,13 +246,12 @@ function Render:rowY(index)
 	return self:monitorOffset() + (index - 1) * (self:scaled(self.config.rowHeight) + self:scaled(self.config.gap))
 end
 
--- Aurora was here
 function Render:buildRow(line, name)
 	local width = self:measuredWidth(line)
 
 	local frame = Instance.new("Frame")
 	frame.Name = name
-	frame.AnchorPoint = Vector2.new(1, 0)
+	frame.AnchorPoint = self:rowAnchorPoint()
 	frame.Size = UDim2.fromOffset(width, self:scaled(self.config.rowHeight))
 	frame.BackgroundColor3 = self.theme.background
 	frame.BackgroundTransparency = 0.62
@@ -195,7 +260,7 @@ function Render:buildRow(line, name)
 	frame.Parent = self.stack
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0.3, 0)
+	corner.CornerRadius = self:cornerRadius()
 	corner.Parent = frame
 
 	local label = Instance.new("TextLabel")
@@ -216,8 +281,9 @@ function Render:buildRow(line, name)
 end
 
 function Render:moveTo(frame, y, width, time)
+	frame.AnchorPoint = self:rowAnchorPoint()
 	self.motion:to(frame, "move", {
-		Position = UDim2.new(1, 0, 0, y),
+		Position = UDim2.new(self:rowX(), 0, 0, y),
 		Size = UDim2.fromOffset(width, self:scaled(self.config.rowHeight)),
 	}, time)
 end
@@ -227,10 +293,10 @@ function Render:fadeIn(label)
 end
 
 function Render:layout()
-	self:updateStackWidth()
+	self:updateStackSize()
 
 	if self.graph then
-		self.graph:layout(self:graphsTop())
+		self.graph:layout(self.graph:top())
 	end
 
 	for index, frame in self.monitorFrames do
@@ -328,7 +394,8 @@ function Render:makeItem(event)
 
 	local line = self.format:eventLine(event)
 	local frame, label, width = self:buildRow(line, `Lori_{self.serial}`)
-	frame.Position = UDim2.new(1, self:offscreen(width), 0, self:rowY(1))
+	local offscreen = self:offscreenPosition(width)
+	frame.Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:rowY(1))
 	label.TextTransparency = 1
 
 	local item = {
@@ -378,8 +445,9 @@ function Render:destroyItem(item)
 	item.dead = true
 
 	local frame = item.frame
+	local offscreen = self:offscreenPosition(item.width)
 	self.motion:to(frame, "move", {
-		Position = UDim2.new(1, self:offscreen(item.width), 0, frame.Position.Y.Offset),
+		Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, frame.Position.Y.Offset),
 	}, self.config.exitTime)
 
 	task.delay(self.config.exitTime + 0.04, function()
@@ -399,7 +467,7 @@ function Render:updateMonitorLine(index, event)
 		return
 	end
 
-	self:updateStackWidth()
+	self:updateStackSize()
 	local line = self.format:eventLine(event)
 	local width = self:measuredWidth(line)
 	local y = self:monitorY(index)
@@ -408,7 +476,8 @@ function Render:updateMonitorLine(index, event)
 
 	if not frame or not frame.Parent or not label then
 		frame, label = self:buildRow(line, event.name or `Monitor{index}`)
-		frame.Position = UDim2.new(1, self:offscreen(width) + index * 10, 0, y)
+		local offscreen = self:offscreenPosition(width)
+		frame.Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, y)
 		label.TextTransparency = 1
 		self.monitorFrames[index] = frame
 		self.monitorLabels[index] = label
@@ -440,9 +509,15 @@ function Render:mount(parent)
 
 	local stack = Instance.new("Frame")
 	stack.Name = "Stack"
-	stack.AnchorPoint = Vector2.new(1, 0)
-	stack.Position = UDim2.new(1, -self.config.rightOffset, 0, self.config.topOffset)
-	stack.Size = UDim2.fromOffset(self:scaled(self.config.minWidth), self:scaled(260))
+	local anchorPoint, position = resolveAnchor(self.config.anchor)
+
+	local xOffset = if anchorPoint.X == 1 then -self.config.rightOffset else self.config.leftOffset
+
+	local yOffset = if anchorPoint.Y == 1 then -self.config.bottomOffset else self.config.topOffset
+
+	stack.AnchorPoint = anchorPoint
+	stack.Position = position + UDim2.fromOffset(xOffset, yOffset)
+	stack.Size = UDim2.fromOffset(self:scaled(self.config.minWidth), self:scaled(self.config.rowHeight))
 	stack.BackgroundTransparency = 1
 	stack.BorderSizePixel = 0
 	stack.Parent = gui
@@ -451,7 +526,7 @@ function Render:mount(parent)
 	self.stack = stack
 	self.graph = imports.Graph.new(self)
 	self:updateScale()
-	self:updateStackWidth()
+	self:updateStackSize()
 	self:bindViewport()
 	self.mounted = true
 end

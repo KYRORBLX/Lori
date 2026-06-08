@@ -5,17 +5,12 @@
 ]]
 
 local imports = {
-	TweenService = game:GetService("TweenService"),
-
-	Style = require("../styles").bars,
+	Style = require("../styles/bars"),
+	UserInputService = game:GetService("UserInputService"),
 }
 
 local Graph = {}
 Graph.__index = Graph
-
-local function graphCorner(render)
-	return UDim.new(0, math.floor(0.3 * render.config.rowHeight + 0.5))
-end
 
 local function graphWidth(render)
 	return math.min(render.config.graphWidth, render:maxLineWidth())
@@ -35,6 +30,10 @@ function Graph.new(render)
 		cards = {},
 		order = {},
 	}, Graph)
+end
+
+function Graph:top()
+	return 0
 end
 
 function Graph:height()
@@ -64,13 +63,18 @@ function Graph:layout(y)
 		end
 
 		self:syncCard(card)
+		local anchorPoint = render:rowAnchorPoint()
+		local rowX = render:rowX()
+		card.frame.AnchorPoint = anchorPoint
+		card.textFrame.AnchorPoint = anchorPoint
+
 		render.motion:to(card.frame, "move", {
-			Position = UDim2.new(1, 0, 0, y),
+			Position = UDim2.new(rowX, 0, 0, y),
 			Size = UDim2.fromOffset(width, height),
 		}, render.config.motionTime)
 
 		render.motion:to(card.textFrame, "move", {
-			Position = UDim2.new(1, 0, 0, y + height + gap),
+			Position = UDim2.new(rowX, 0, 0, y + height + gap),
 			Size = UDim2.fromOffset(card.textWidth, render:scaled(render.config.rowHeight)),
 		}, render.config.motionTime)
 
@@ -99,6 +103,12 @@ function Graph:toneColor(card)
 end
 
 function Graph:thresholdTone(card, value)
+	if card.failBelow and value <= card.failBelow then
+		return "error"
+	end
+	if card.warnBelow and value <= card.warnBelow then
+		return "warn"
+	end
 	if card.warnAt and value >= card.warnAt then
 		return card.failAt and value >= card.failAt and "error" or "warn"
 	end
@@ -120,34 +130,15 @@ function Graph:columnWidth(card, gap)
 	return math.max(1, (graphWidth(self.render) - self.render.config.padX * 2 - gaps) / count)
 end
 
-function Graph:placeColumns(card, gap)
+function Graph:placeColumns(card)
+	local gap = card.style.columnGap
 	local columnWidth = self:columnWidth(card, gap)
+	card.columnWidth = columnWidth
 
 	for index, column in card.columns do
 		column.Position = UDim2.new(0, (index - 1) * (columnWidth + gap), 1, 0)
 		column.Size = UDim2.new(0, math.ceil(columnWidth), 0, column.Size.Y.Offset)
 	end
-
-	card.columnWidth = columnWidth
-end
-
-function Graph:sizeColumn(card, index, height)
-	if card.heights[index] == height then
-		return
-	end
-	card.heights[index] = height
-
-	local column = card.columns[index]
-	if card.tweens[index] then
-		card.tweens[index]:Cancel()
-	end
-
-	card.tweens[index] = imports.TweenService:Create(
-		column,
-		TweenInfo.new(self.render.config.graphTweenTime, self.render.config.motionStyle, Enum.EasingDirection.Out),
-		{ Size = UDim2.new(0, math.ceil(card.columnWidth or column.Size.X.Offset), 0, height) }
-	)
-	card.tweens[index]:Play()
 end
 
 function Graph:buildColumns(card)
@@ -161,6 +152,7 @@ function Graph:buildColumns(card)
 		column.BackgroundColor3 = tone
 		column.BackgroundTransparency = style.columnTransparency
 		column.BorderSizePixel = 0
+		column.Active = true
 		column.Parent = card.plot
 
 		if style.gradientFade then
@@ -174,7 +166,99 @@ function Graph:buildColumns(card)
 		end
 
 		card.columns[index] = column
+
+		column.MouseEnter:Connect(function()
+			self:showTooltip(card, index)
+		end)
 	end
+end
+
+function Graph:tooltipText(card, index)
+	local value = card.window[index]
+	if value == nil then
+		return `{card.name}: --`
+	end
+
+	return `{card.name} [{index}]: {self:formatValue(card, value)}`
+end
+
+function Graph:positionTooltip(card)
+	local textWidth = card.tooltip.TextBounds.X + self.render:scaled(8)
+	local textHeight = self.render:scaled(self.render.config.rowHeight)
+	local stackPosition = self.render.stack.AbsolutePosition
+	local stackSize = self.render.stack.AbsoluteSize
+	local mouse = imports.UserInputService:GetMouseLocation()
+
+	local x = mouse.X - stackPosition.X
+	local y = mouse.Y - stackPosition.Y - textHeight - self.render:scaled(34)
+
+	x = math.clamp(x, math.floor(textWidth / 2), stackSize.X - math.floor(textWidth / 2))
+	y = math.clamp(y, textHeight, stackSize.Y)
+
+	card.tooltip.Size = UDim2.fromOffset(textWidth, textHeight)
+
+	local shadowPad = self.render:scaled(4)
+	card.tooltipShadow.Size = UDim2.fromOffset(textWidth + shadowPad, textHeight + shadowPad)
+
+	self.render.motion:to(card.tooltip, "tooltipMove", {
+		Position = UDim2.fromOffset(x, y),
+	}, 0.1)
+
+	self.render.motion:to(card.tooltipShadow, "tooltipMove", {
+		Position = UDim2.fromOffset(x, y + math.floor(shadowPad / 2)),
+	}, 0.1)
+end
+
+function Graph:showTooltip(card, index)
+	card.tooltip.Text = self:tooltipText(card, index)
+	self:positionTooltip(card)
+	card.tooltip.Visible = true
+	card.tooltipShadow.Visible = true
+	card.hoveredIndex = index
+
+	self.render.motion:to(card.tooltip, "fade", {
+		TextTransparency = 0,
+	}, self.render.config.fadeTime)
+
+	self.render.motion:to(card.tooltipShadow, "fade", {
+		ImageTransparency = 0.88,
+	}, self.render.config.fadeTime)
+end
+
+function Graph:hideTooltip(card)
+	card.hoveredIndex = nil
+
+	self.render.motion:to(card.tooltip, "fade", {
+		TextTransparency = 1,
+	}, self.render.config.fadeTime)
+
+	self.render.motion:to(card.tooltipShadow, "fade", {
+		ImageTransparency = 1,
+	}, self.render.config.fadeTime)
+
+	task.delay(self.render.config.fadeTime, function()
+		if card.hoveredIndex == nil then
+			card.tooltip.Visible = false
+			card.tooltipShadow.Visible = false
+		end
+	end)
+
+	self:slice(card)
+	self:updateStats(card)
+	self:autoRange(card)
+	self.render:layout()
+end
+
+function Graph:sizeColumn(card, index, height)
+	if card.heights[index] == height then
+		return
+	end
+	card.heights[index] = height
+
+	local column = card.columns[index]
+	self.render.motion:to(column, "size", {
+		Size = UDim2.new(0, math.ceil(card.columnWidth or column.Size.X.Offset), 0, height),
+	}, self.render.config.graphTweenTime)
 end
 
 function Graph:drawColumns(card)
@@ -183,17 +267,22 @@ function Graph:drawColumns(card)
 	local low, high = card.range[1], card.range[2]
 	local span = math.max(high - low, 1e-6)
 
-	self:placeColumns(card, style.columnGap)
+	self:placeColumns(card)
+
+	local latest = card.samples[#card.samples]
+	local emptyColor = self:heatColor(latest and self:thresholdTone(card, latest) or card.tone, 0)
 
 	for index = 1, self.render.config.graphColumns do
 		local value = card.window[index]
 		local height = style.floor
+		local column = card.columns[index]
 
 		if value ~= nil then
 			local ratio = math.clamp((value - low) / span, 0, 1)
 			height = math.max(style.floor, math.floor(ratio * (plotHeight - 1) + 0.5))
-			local tone = self:thresholdTone(card, value)
-			card.columns[index].BackgroundColor3 = self:heatColor(tone, ratio * style.heat)
+			column.BackgroundColor3 = self:heatColor(self:thresholdTone(card, value), ratio * style.heat)
+		else
+			column.BackgroundColor3 = emptyColor
 		end
 
 		self:sizeColumn(card, index, height)
@@ -220,16 +309,12 @@ function Graph:headLine(card)
 	local head = `{name}: {value}`
 
 	if #card.window > 0 then
-		local gap = render.format:colored(render.theme.muted, " ")
-		local max = `{render.format:colored(render.theme.muted, "max")}={render.format:colored(
-			render.theme.value,
-			self:formatValue(card, card.maxSeen)
-		)}`
-		local avg = `{render.format:colored(render.theme.muted, "avg")}={render.format:colored(
-			render.theme.value,
-			self:formatValue(card, card.avgSeen)
-		)}`
-		head ..= `{gap}{max}{gap}{avg}`
+		local stats = render.format:joinFields({
+			render.format:field("min", self:formatValue(card, card.minSeen)),
+			render.format:field("max", self:formatValue(card, card.maxSeen)),
+			render.format:field("avg", self:formatValue(card, card.avgSeen)),
+		})
+		head ..= ` {stats}`
 	end
 
 	return head
@@ -245,10 +330,30 @@ end
 function Graph:slice(card)
 	local count = self.render.config.graphColumns
 	local first = math.max(1, #card.samples - count + 1)
+	local sampleCount = #card.samples - first + 1
 	local window = {}
 
-	for index = first, #card.samples do
-		table.insert(window, card.samples[index])
+	if sampleCount <= 0 then
+		card.window = window
+		return window
+	end
+
+	if sampleCount == 1 then
+		local value = card.samples[first]
+		for _ = 1, count do
+			table.insert(window, value)
+		end
+	else
+		for column = 1, count do
+			local position = (column - 1) / math.max(count - 1, 1)
+			local samplePosition = position * (sampleCount - 1)
+			local leftOffset = math.floor(samplePosition)
+			local rightOffset = math.min(leftOffset + 1, sampleCount - 1)
+			local alpha = samplePosition - leftOffset
+			local left = card.samples[first + leftOffset]
+			local right = card.samples[first + rightOffset]
+			table.insert(window, left + (right - left) * alpha)
+		end
 	end
 
 	card.window = window
@@ -256,14 +361,17 @@ function Graph:slice(card)
 end
 
 function Graph:updateStats(card)
+	local low = math.huge
 	local high = -math.huge
 	local total = 0
 
 	for _, sample in card.window do
+		low = math.min(low, sample)
 		high = math.max(high, sample)
 		total += sample
 	end
 
+	card.minSeen = low == math.huge and 0 or low
 	card.maxSeen = high == -math.huge and 0 or high
 	card.avgSeen = #card.window > 0 and total / #card.window or 0
 end
@@ -287,10 +395,15 @@ function Graph:autoRange(card)
 
 	local pad = (high - low) * 0.15
 	if pad <= 0 then
-		pad = math.max(high * 0.1, 1)
+		pad = math.max(math.abs(high) * 0.1, 1e-6)
 	end
 
-	card.range = { math.max(0, low - pad), high + pad }
+	local rangeLow = if high <= 0 then low - pad else math.max(0, low - pad)
+	local rangeHigh = high + pad
+	if rangeHigh <= rangeLow then
+		rangeHigh = rangeLow + 1e-6
+	end
+	card.range = { rangeLow, rangeHigh }
 end
 
 function Graph:redraw(card)
@@ -336,14 +449,20 @@ function Graph:make(name, options)
 		samples = {},
 		window = {},
 		columns = {},
-		tweens = {},
 		heights = {},
+		columnWidth = 1,
 		range = { lo, hi },
 		fixedRange = options.range ~= nil,
 		warnAt = tonumber(options.warnAt),
 		failAt = tonumber(options.failAt),
+		warnBelow = tonumber(options.warnBelow),
+		failBelow = tonumber(options.failBelow),
+		hoveredIndex = nil,
+		tooltip = nil,
+		tooltipShadow = nil,
 		display = "--",
 		textWidth = render:scaled(render.config.minWidth),
+		minSeen = 0,
 		maxSeen = 0,
 		avgSeen = 0,
 		dead = false,
@@ -354,8 +473,9 @@ function Graph:make(name, options)
 
 	local frame = Instance.new("Frame")
 	frame.Name = `LoriGraph_{render.serial}`
-	frame.AnchorPoint = Vector2.new(1, 0)
-	frame.Position = UDim2.new(1, render:offscreen(width) + render:scaled(12), 0, render:graphsTop())
+	frame.AnchorPoint = render:rowAnchorPoint()
+	local offscreen = render:offscreenPosition(width)
+	frame.Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:top())
 	frame.Size = UDim2.fromOffset(width, height)
 	frame.BackgroundColor3 = render.theme.background
 	frame.BackgroundTransparency = 0.62
@@ -364,25 +484,28 @@ function Graph:make(name, options)
 	frame.Parent = render.stack
 
 	local corner = Instance.new("UICorner")
-	corner.CornerRadius = graphCorner(render)
+	corner.CornerRadius = render:cornerRadius()
 	corner.Parent = frame
 
 	local plot = Instance.new("Frame")
 	plot.Name = "Plot"
+	plot.Active = true
 	plot.BackgroundTransparency = 1
 	plot.BorderSizePixel = 0
 	plot.ClipsDescendants = true
 	plot.Parent = frame
 
+	plot.MouseLeave:Connect(function()
+		if card.hoveredIndex ~= nil then
+			self:hideTooltip(card)
+		end
+	end)
+
 	local textFrame = Instance.new("Frame")
 	textFrame.Name = `LoriGraphText_{render.serial}`
-	textFrame.AnchorPoint = Vector2.new(1, 0)
-	textFrame.Position = UDim2.new(
-		1,
-		render:offscreen(width) + render:scaled(12),
-		0,
-		render:graphsTop() + height + render:scaled(render.config.gap)
-	)
+	textFrame.AnchorPoint = render:rowAnchorPoint()
+	textFrame.Position =
+		UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:top() + height + render:scaled(render.config.gap))
 	textFrame.Size = UDim2.fromOffset(width, render:scaled(render.config.rowHeight))
 	textFrame.BackgroundColor3 = render.theme.background
 	textFrame.BackgroundTransparency = 0.62
@@ -391,7 +514,7 @@ function Graph:make(name, options)
 	textFrame.Parent = render.stack
 
 	local textCorner = Instance.new("UICorner")
-	textCorner.CornerRadius = graphCorner(render)
+	textCorner.CornerRadius = render:cornerRadius()
 	textCorner.Parent = textFrame
 
 	local head = Instance.new("TextLabel")
@@ -407,8 +530,44 @@ function Graph:make(name, options)
 	head.TextYAlignment = Enum.TextYAlignment.Center
 	head.Parent = textFrame
 
-	card.frame = frame
+	local tooltipShadow = Instance.new("ImageLabel")
+	tooltipShadow.Name = "TooltipShadow"
+	tooltipShadow.AnchorPoint = Vector2.new(0.5, 1)
+	tooltipShadow.BackgroundTransparency = 1
+	tooltipShadow.Image = "rbxassetid://1316045217"
+	tooltipShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+	tooltipShadow.ImageTransparency = 1
+	tooltipShadow.ScaleType = Enum.ScaleType.Slice
+	tooltipShadow.SliceCenter = Rect.new(10, 10, 118, 118)
+	tooltipShadow.Visible = false
+	tooltipShadow.ZIndex = 5
+	tooltipShadow.Parent = render.stack
+
+	local tooltip = Instance.new("TextLabel")
+	tooltip.Name = "Tooltip"
+	tooltip.AnchorPoint = Vector2.new(0.5, 1)
+	tooltip.BackgroundTransparency = 1
+	tooltip.BorderSizePixel = 0
+	tooltip.FontFace = render.config.font
+	tooltip.RichText = false
+	tooltip.TextColor3 = render.theme.text
+	tooltip.TextSize = render.config.textSize
+	tooltip.TextTransparency = 1
+	tooltip.TextXAlignment = Enum.TextXAlignment.Center
+	tooltip.TextYAlignment = Enum.TextYAlignment.Center
+	tooltip.Visible = false
+	tooltip.ZIndex = 6
+	tooltip.Size = UDim2.fromOffset(render:scaled(92), render:scaled(render.config.rowHeight))
+	tooltip.Parent = render.stack
+
+	local tooltipCorner = Instance.new("UICorner")
+	tooltipCorner.CornerRadius = render:cornerRadius()
+	tooltipCorner.Parent = tooltip
+
 	card.textFrame = textFrame
+	card.tooltip = tooltip
+	card.tooltipShadow = tooltipShadow
+	card.frame = frame
 	card.plot = plot
 	card.head = head
 
@@ -421,12 +580,12 @@ function Graph:make(name, options)
 	render:layout()
 
 	render.motion:to(frame, "move", {
-		Position = UDim2.new(1, 0, 0, frame.Position.Y.Offset),
+		Position = UDim2.new(render:rowX(), 0, 0, frame.Position.Y.Offset),
 		Size = UDim2.fromOffset(width, height),
 	}, render.config.motionTime)
 
 	render.motion:to(textFrame, "move", {
-		Position = UDim2.new(1, 0, 0, textFrame.Position.Y.Offset),
+		Position = UDim2.new(render:rowX(), 0, 0, textFrame.Position.Y.Offset),
 		Size = UDim2.fromOffset(card.textWidth, render:scaled(render.config.rowHeight)),
 	}, render.config.motionTime)
 
@@ -450,6 +609,11 @@ function Graph:push(name, value)
 	end
 
 	card.display = self:formatValue(card, value)
+
+	if card.hoveredIndex ~= nil then
+		return
+	end
+
 	self:slice(card)
 	self:updateStats(card)
 	self:autoRange(card)
@@ -483,17 +647,14 @@ function Graph:remove(name)
 
 	render.motion:cancel(card.frame)
 	render.motion:cancel(card.textFrame)
-	for _, tween in card.tweens do
-		tween:Cancel()
-	end
 
-	local exit = render:offscreen(graphWidth(render)) + render:scaled(12)
+	local offscreen = render:offscreenPosition(graphWidth(render))
 	render.motion:to(card.frame, "move", {
-		Position = UDim2.new(1, exit, 0, card.frame.Position.Y.Offset),
+		Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, card.frame.Position.Y.Offset),
 	}, render.config.exitTime)
 
 	render.motion:to(card.textFrame, "move", {
-		Position = UDim2.new(1, exit, 0, card.textFrame.Position.Y.Offset),
+		Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, card.textFrame.Position.Y.Offset),
 	}, render.config.exitTime)
 
 	task.delay(render.config.exitTime + 0.04, function()
@@ -504,6 +665,8 @@ function Graph:remove(name)
 
 		card.frame:Destroy()
 		card.textFrame:Destroy()
+		card.tooltip:Destroy()
+		card.tooltipShadow:Destroy()
 		render:layout()
 	end)
 end
@@ -515,6 +678,12 @@ function Graph:clear()
 		end
 		if card.textFrame then
 			card.textFrame:Destroy()
+		end
+		if card.tooltip then
+			card.tooltip:Destroy()
+		end
+		if card.tooltipShadow then
+			card.tooltipShadow:Destroy()
 		end
 	end
 

@@ -43,6 +43,8 @@ interface LoriGraphOptions {
 	range?: [number, number];
 	warnAt?: number;
 	failAt?: number;
+	warnBelow?: number;
+	failBelow?: number;
 	format?: (value: number) => unknown;
 }
 
@@ -50,6 +52,16 @@ interface LoriGraph {
 	push(value: number): void;
 	rescale(factor: number): void;
 	remove(): void;
+}
+
+interface LoriItemBlacklist {
+	Blacklist: string[];
+	addItem(name: string): LoriItemBlacklist;
+	FPS(): LoriItemBlacklist;
+	Frame(): LoriItemBlacklist;
+	Memory(): LoriItemBlacklist;
+	Ping(): LoriItemBlacklist;
+	Pressure(): LoriItemBlacklist;
 }
 
 interface LoriChannel {
@@ -69,6 +81,13 @@ interface LoriOptions extends Record<string, unknown> {
 	config?: Record<string, unknown>;
 	theme?: LoriTheme;
 	template?: unknown;
+	templateBlacklist?: LoriItemBlacklist | string[];
+	anchor?: "tr" | "tl" | "br" | "bl" | "topRight" | "topLeft" | "bottomRight" | "bottomLeft" | "top-right" | "top-left" | "bottom-right" | "bottom-left";
+	rightOffset?: number;
+	leftOffset?: number;
+	topOffset?: number;
+	bottomOffset?: number;
+	cornerRadius?: number;
 }
 
 interface LoriApi {
@@ -110,6 +129,9 @@ interface LoriStatic extends LoriApi {
 	Templates: {
 		Performance: () => unknown;
 		Empty: () => unknown;
+		ItemBlacklister: {
+			New(): LoriItemBlacklist;
+		};
 	};
 	Themes: {
 		Default: Required<LoriTheme>;

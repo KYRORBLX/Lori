@@ -31,12 +31,16 @@ Config.groups = {
 
 	ui = {
 		rightOffset = 12,
+		leftOffset = 12,
+		bottomOffset = 5,
+		anchor = "tr", -- tr/tl/br/bl, also supports topRight, top-right, bottomLeft, bottom-left, etc.
 		topOffset = 52,
 		maxWidth = 0,
 		minWidth = 118,
 		rowHeight = 17,
 		gap = 5,
 		padX = 7,
+		cornerRadius = 0.3,
 		textSize = 10,
 		textYOffset = -1,
 		displayOrder = 118,
@@ -105,6 +109,18 @@ function Config.applyAliases(config)
 	if typeof(config.position) == "Vector2" then
 		config.rightOffset = config.position.X
 		config.topOffset = config.position.Y
+	end
+
+	if type(config.leftOffset) ~= "number" then
+		config.leftOffset = config.rightOffset
+	end
+
+	if type(config.bottomOffset) ~= "number" then
+		config.bottomOffset = config.gap
+	end
+
+	if type(config.anchor) == "string" then
+		config.anchor = string.lower(config.anchor)
 	end
 
 	if type(config.width) == "number" then

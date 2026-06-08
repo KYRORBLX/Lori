@@ -1,6 +1,6 @@
 --[[
 	@name default
-	@author dullflowerr
+	@author dullflowerr, driftingAurora
 	@time June 7, 2026
 ]]
 
@@ -12,16 +12,38 @@ local imports = {
 	Pressure = require("./providers/pressure"),
 }
 
-return function()
+local providers = {
+	{ name = "Frame", module = imports.Frame, row = 1 },
+	{ name = "Pressure", module = imports.Pressure, row = 2 },
+	{ name = "PingGraph", module = imports.PingGraph },
+	{ name = "FpsGraph", module = imports.FpsGraph },
+	{ name = "MemGraph", module = imports.MemGraph },
+}
+
+local function toSet(list)
+	local set = {}
+	if typeof(list) == "table" then
+		for _, name in list do
+			set[name] = true
+		end
+	end
+
+	return set
+end
+
+return function(blacklistedItems)
+	local blacklist = toSet(blacklistedItems)
+	local activeProviders = {}
+
+	for _, provider in providers do
+		if not blacklist[provider.name] then
+			table.insert(activeProviders, provider.module.new(provider.row))
+		end
+	end
+
 	return {
 		id = "performance",
 		monitorRows = 2,
-		providers = {
-			imports.Frame.new(1),
-			imports.Pressure.new(2),
-			imports.PingGraph.new(),
-			imports.FpsGraph.new(),
-			imports.MemGraph.new(),
-		},
+		providers = activeProviders,
 	}
 end

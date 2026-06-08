@@ -28,6 +28,14 @@ function Format:colored(color, text)
 	return `<font color="{Format.hex(color)}">{Format.escape(text)}</font>`
 end
 
+function Format:field(key, value)
+	return `{self:colored(self.theme.key, key)}={self:colored(self.theme.value, value)}`
+end
+
+function Format:joinFields(parts)
+	return table.concat(parts, self:colored(self.theme.muted, " "))
+end
+
 function Format:fields(fields)
 	if type(fields) ~= "table" then
 		return ""
@@ -49,11 +57,11 @@ function Format:fields(fields)
 		end
 
 		if value ~= nil then
-			table.insert(parts, `{self:colored(self.theme.key, key)}={self:colored(self.theme.value, value)}`)
+			table.insert(parts, self:field(key, value))
 		end
 	end
 
-	return table.concat(parts, self:colored(self.theme.muted, " "))
+	return self:joinFields(parts)
 end
 
 function Format:hasLiveFields(fields)

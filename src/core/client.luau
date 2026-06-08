@@ -18,13 +18,41 @@ local imports = {
 local Client = {}
 Client.__index = Client
 
-local function resolveTemplate(templateOption)
-	if type(templateOption) == "function" then
-		return templateOption()
+local configKeys = {}
+for _, key in
+	{
+		"config",
+		"template",
+		"templateBlacklist",
+		"theme",
+	}
+do
+	configKeys[key] = true
+end
+
+local function normalizeTemplateBlacklist(blacklistItems)
+	if not blacklistItems then
+		return {}
 	end
+
+	if getmetatable(blacklistItems) and rawget(getmetatable(blacklistItems), "__type") == "Item Blacklist" then
+		return blacklistItems.Blacklist
+	end
+
+	return blacklistItems
+end
+
+local function resolveTemplate(templateOption, blacklistItems)
+	blacklistItems = normalizeTemplateBlacklist(blacklistItems)
+
+	if type(templateOption) == "function" then
+		return templateOption(blacklistItems)
+	end
+
 	if type(templateOption) == "table" then
 		return templateOption
 	end
+
 	return imports.Templates.Empty()
 end
 
@@ -34,7 +62,7 @@ local function applyConfig(config, options)
 	end
 
 	for key, value in options do
-		if key ~= "config" and key ~= "theme" and key ~= "template" then
+		if not configKeys[key] then
 			config[key] = value
 		end
 	end
@@ -94,9 +122,12 @@ end
 function Client.new(options)
 	options = options or {}
 
+	local templateBlacklist = options.templateBlacklist or {}
 	local config = configFromOptions(options)
 	local theme = imports.Config.mergeTheme(options.theme or config.theme)
-	local template = resolveTemplate(options.template or config.template)
+
+	local template = resolveTemplate(options.template or config.template, templateBlacklist)
+
 	local format = imports.Format.new(theme)
 
 	local self = setmetatable({
@@ -182,14 +213,17 @@ function Client:setTheme(theme)
 	self.render:applyTheme()
 end
 
-function Client:setTemplate(templateOption)
+function Client:setTemplate(templateOption, blacklistItems)
 	for _, provider in self.providers do
 		provider:stop()
 	end
-	local template = resolveTemplate(templateOption)
+
+	local template = resolveTemplate(templateOption, blacklistItems)
+
 	self.template = template
 	self.providers = template.providers or {}
 	self.render:setMonitorRows(template.monitorRows or 0)
+
 	if self.mounted and self.config.monitorEnabled then
 		for _, provider in self.providers do
 			provider:start(self)
@@ -200,13 +234,16 @@ end
 function Client:mount(parent, options)
 	if options then
 		applyConfig(self.config, options)
+
 		if options.theme then
 			self:setTheme(options.theme)
 		end
+
 		if options.template then
-			self:setTemplate(options.template)
+			self:setTemplate(options.template, rawget(options, "templateBlacklist"))
 		end
 	end
+
 	if not self:isActive() then
 		return
 	end

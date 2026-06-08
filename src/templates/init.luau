@@ -9,7 +9,7 @@ local imports = {
 	Empty = require("@self/empty"),
 }
 
-return table.freeze({
+return {
 	Performance = imports.Default,
 	Empty = imports.Empty,
-})
+}

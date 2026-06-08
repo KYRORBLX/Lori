@@ -39,6 +39,8 @@ function MemGraph:start(client)
 		tone = "phase",
 		style = "bars",
 		unit = "mb",
+		warnAt = 3000,
+		failAt = 6000,
 	})
 
 	self.connection = imports.RunService.RenderStepped:Connect(function()

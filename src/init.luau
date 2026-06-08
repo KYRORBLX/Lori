@@ -7,15 +7,23 @@
 local imports = {
 	Client = require("@self/core/client"),
 	Config = require("@self/core/config"),
+
+	ItemBlacklister = require("@self/templates/utils/itemBlacklist"),
 	Templates = require("@self/templates"),
 }
 
-local Lori = {}
-
-Lori.Templates = imports.Templates
-Lori.Themes = {
-	Default = imports.Config.theme,
+local Lori = {
+	Templates = {},
 }
+
+do
+	imports.Templates.ItemBlacklister = imports.ItemBlacklister
+	Lori.Templates = table.freeze(imports.Templates)
+
+	Lori.Themes = {
+		Default = imports.Config.theme,
+	}
+end
 
 local defaultClient = nil
 

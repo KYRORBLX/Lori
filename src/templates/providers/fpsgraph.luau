@@ -31,6 +31,8 @@ function FpsGraph:start(client)
 		tone = "success",
 		unit = "fps",
 		style = "bars",
+		warnBelow = 45,
+		failBelow = 30,
 	})
 
 	self.connection = imports.RunService.RenderStepped:Connect(function(deltaTime)
