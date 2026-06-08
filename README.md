@@ -66,13 +66,6 @@ For Wally:
 Lori = "kyrorblx/lori@0.0.5"
 ```
 
-For Pesde:
-
-```toml
-[dependencies]
-Lori = { name = "kyrorblx/lori", version = "^0.0.5", target = "roblox" }
-```
-
 Lori is client-side. Put your demo or setup code in `StarterPlayerScripts`, `StarterGui`, or another client place. Server scripts should not mount the overlay because the UI lives in `PlayerGui`.
 
 ## How It Works
