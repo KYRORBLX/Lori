@@ -18,39 +18,6 @@ local imports = {
 local Client = {}
 Client.__index = Client
 
-local CLIENT_DOT_METHODS = {
-	"isActive",
-	"setTheme",
-	"setTemplate",
-	"mount",
-	"unmount",
-	"push",
-	"dismiss",
-	"begin",
-	"finish",
-	"record",
-	"time",
-	"measure",
-	"watch",
-	"graph",
-	"inspect",
-	"emit",
-	"channel",
-	"group",
-	"raycast",
-	"spherecast",
-	"blockcast",
-	"trace",
-	"info",
-	"phase",
-	"success",
-	"warn",
-	"fail",
-	"error",
-	"clear",
-	"destroy",
-}
-
 local function resolveTemplate(templateOption)
 	if type(templateOption) == "function" then
 		return templateOption()
@@ -164,7 +131,38 @@ function Client.new(options)
 		self:warn("runtime.perf", "slow", reportFields, 4)
 	end)
 
-	bindDotMethods(self, Client, CLIENT_DOT_METHODS)
+	bindDotMethods(self, Client, {
+		"isActive",
+		"setTheme",
+		"setTemplate",
+		"mount",
+		"unmount",
+		"push",
+		"dismiss",
+		"begin",
+		"finish",
+		"record",
+		"time",
+		"measure",
+		"watch",
+		"graph",
+		"inspect",
+		"emit",
+		"channel",
+		"group",
+		"raycast",
+		"spherecast",
+		"blockcast",
+		"trace",
+		"info",
+		"phase",
+		"success",
+		"warn",
+		"fail",
+		"error",
+		"clear",
+		"destroy",
+	})
 
 	return self
 end
