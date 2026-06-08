@@ -63,7 +63,7 @@ For Wally:
 
 ```toml
 [dependencies]
-Lori = "kyrorblx/lori@0.1.1"
+Lori = "kyrorblx/lori@0.1.2"
 ```
 *We're still waiting for uplift games to approve us :(, give us a bit for wally!*
 
