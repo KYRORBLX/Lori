@@ -180,6 +180,7 @@ function Render:rowY(index)
 	return self:monitorOffset() + (index - 1) * (self:scaled(self.config.rowHeight) + self:scaled(self.config.gap))
 end
 
+-- Aurora was here
 function Render:buildRow(line, name)
 	local width = self:measuredWidth(line)
 
