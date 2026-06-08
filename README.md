@@ -65,6 +65,7 @@ For Wally:
 [dependencies]
 Lori = "kyrorblx/lori@0.0.5"
 ```
+*We're still waiting for uplift games to approve us :(, give us a bit for wally!*
 
 Lori is client-side. Put your demo or setup code in `StarterPlayerScripts`, `StarterGui`, or another client place. Server scripts should not mount the overlay because the UI lives in `PlayerGui`.
 
