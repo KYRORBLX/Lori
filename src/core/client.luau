@@ -15,6 +15,11 @@ local imports = {
 	Templates = require("../templates"),
 }
 
+local Types = require("./types")
+
+export type Client = Types.Client
+export type ClientOptions = Types.ClientOptions
+
 local Client = {}
 Client.__index = Client
 
@@ -119,8 +124,8 @@ local function bindDotMethods(object, source, methods)
 	end
 end
 
-function Client.new(options)
-	options = options or {}
+function Client.new(inputOptions: Types.ClientOptions?): Types.Client
+	local options: Types.ClientOptions = inputOptions or {}
 
 	local templateBlacklist = options.templateBlacklist or {}
 	local config = configFromOptions(options)
@@ -195,7 +200,7 @@ function Client.new(options)
 		"destroy",
 	})
 
-	return self
+	return (self :: any) :: Types.Client
 end
 
 function Client:isActive()

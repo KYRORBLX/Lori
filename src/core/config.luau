@@ -42,7 +42,6 @@ Config.groups = {
 		padX = 7,
 		cornerRadius = 0.3,
 		textSize = 10,
-		textYOffset = -1,
 		displayOrder = 118,
 		font = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Medium, Enum.FontStyle.Normal),
 		measureFont = Enum.Font.RobotoMono,

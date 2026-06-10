@@ -5,20 +5,35 @@
 ]]
 
 local imports = {
-	Client = require("@self/core/client"),
-	Config = require("@self/core/config"),
+	Client = require("@self/core/client");
+	Config = require("@self/core/config");
 
-	ItemBlacklister = require("@self/templates/utils/itemBlacklist"),
-	Templates = require("@self/templates"),
+	ItemBlacklister = require("@self/templates/utils/itemBlacklist");
+	Templates = require("@self/templates");
 }
 
+local Types = require("@self/core/types") -- . . luau syntax cant reach table fields :( bad design, sorry - kio
+
+export type Client = Types.Client
+export type ClientOptions = Types.ClientOptions
+export type Event = Types.Event
+export type Fields = Types.Fields
+export type Tone = Types.Tone
+export type Channel = Types.Channel
+export type Watch = Types.Watch
+export type WatchOptions = Types.WatchOptions
+export type GraphHandle = Types.GraphHandle
+export type GraphOptions = Types.GraphOptions
+export type Theme = Types.Theme
+
 local Lori = {
-	Templates = {},
+	Templates = {}
 }
 
 do
-	imports.Templates.ItemBlacklister = imports.ItemBlacklister
-	Lori.Templates = table.freeze(imports.Templates)
+	local templates = table.clone(imports.Templates) :: { [string]: any }
+	templates.ItemBlacklister = imports.ItemBlacklister
+	Lori.Templates = table.freeze(templates)
 
 	Lori.Themes = {
 		Default = imports.Config.theme,
@@ -45,7 +60,7 @@ local function forward(method)
 	end
 end
 
-function Lori.create(options)
+function Lori.create(options: Types.ClientOptions?): Types.Client
 	return imports.Client.new(options)
 end
 
@@ -95,4 +110,4 @@ do
 	forward(method)
 end
 
-return table.freeze(Lori)
+return (table.freeze(Lori) :: any) :: Types.LoriApi

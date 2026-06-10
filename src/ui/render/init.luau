@@ -6,7 +6,6 @@
 
 local imports = {
 	Players = game:GetService("Players"),
-	TextService = game:GetService("TextService"),
 	Workspace = game:GetService("Workspace"),
 
 	Format = require("./format"),
@@ -28,19 +27,19 @@ end
 
 function Render.new(config, theme, format, monitorRows)
 	return setmetatable({
+		motion = imports.Motion.new(config),
 		monitorRows = monitorRows or 0,
+		viewportConnection = nil,
+		cameraConnection = nil,
 		monitorFrames = {},
 		monitorLabels = {},
-		motion = imports.Motion.new(config),
 		mounted = false,
 		config = config,
 		format = format,
-		graph = nil,
 		theme = theme,
+		graph = nil,
 		stack = nil,
 		scale = 1,
-		viewportConnection = nil,
-		cameraConnection = nil,
 		items = {},
 		keyed = {},
 		serial = 0,
@@ -201,30 +200,28 @@ function Render:offscreen(width)
 	return math.max(width or self:maxLineWidth(), self:scaled(self.config.minWidth)) + self:scaled(32)
 end
 
-function Render:measuredWidth(line)
-	local plain = self.format.plainText(line)
-	if plain == "" then
-		return self:scaled(self.config.minWidth)
-	end
-
-	local bounds = imports.TextService:GetTextSize(
-		plain,
-		self:scaled(self.config.textSize),
-		self.config.measureFont,
-		Vector2.new(100000, self:scaled(self.config.rowHeight))
-	)
-
-	return math.clamp(
-		math.ceil(bounds.X) + self:scaled(self.config.padX) * 2,
-		self:scaled(self.config.minWidth),
-		self:maxLineWidth()
-	)
+function Render:syncLabel(label)
+	label.AutomaticSize = Enum.AutomaticSize.XY
+	label.Position = UDim2.new()
+	label.Size = UDim2.new()
+	label.TextSize = self:scaled(self.config.textSize)
 end
 
-function Render:syncLabel(label)
-	label.Position = UDim2.fromOffset(self:scaled(self.config.padX), self.config.textYOffset * self.scale)
-	label.Size = UDim2.new(1, -self:scaled(self.config.padX) * 2, 1, 0)
-	label.TextSize = self:scaled(self.config.textSize)
+function Render:syncPadding(padding)
+	if not padding then
+		return
+	end
+
+	local padX = self:scaled(self.config.padX * 1.08)
+	local padY = self:scaled(self.config.padX * 0.49)
+	padding.PaddingTop = UDim.new(0, padY)
+	padding.PaddingBottom = UDim.new(0, padY)
+	padding.PaddingLeft = UDim.new(0, padX)
+	padding.PaddingRight = UDim.new(0, padX)
+end
+
+function Render:rowSize(label)
+	return Vector2.new(label.AbsoluteSize.X, label.AbsoluteSize.Y)
 end
 
 function Render:monitorOffset()
@@ -247,12 +244,10 @@ function Render:rowY(index)
 end
 
 function Render:buildRow(line, name)
-	local width = self:measuredWidth(line)
-
 	local frame = Instance.new("Frame")
 	frame.Name = name
 	frame.AnchorPoint = self:rowAnchorPoint()
-	frame.Size = UDim2.fromOffset(width, self:scaled(self.config.rowHeight))
+	frame.Size = UDim2.new()
 	frame.BackgroundColor3 = self.theme.background
 	frame.BackgroundTransparency = 0.62
 	frame.BorderSizePixel = 0
@@ -277,14 +272,27 @@ function Render:buildRow(line, name)
 	label.Parent = frame
 	self:syncLabel(label)
 
-	return frame, label, width
+	local padding = Instance.new("UIPadding")
+	padding.Parent = label
+	self:syncPadding(padding)
+
+	local size = self:rowSize(label)
+	frame.Size = UDim2.fromOffset(size.X, size.Y)
+	task.defer(function()
+		if frame.Parent then
+			local resolvedSize = self:rowSize(label)
+			frame.Size = UDim2.fromOffset(resolvedSize.X, resolvedSize.Y)
+		end
+	end)
+
+	return frame, label, size.X
 end
 
-function Render:moveTo(frame, y, width, time)
+function Render:moveTo(frame, y, size, time)
 	frame.AnchorPoint = self:rowAnchorPoint()
 	self.motion:to(frame, "move", {
 		Position = UDim2.new(self:rowX(), 0, 0, y),
-		Size = UDim2.fromOffset(width, self:scaled(self.config.rowHeight)),
+		Size = UDim2.fromOffset(size.X, size.Y),
 	}, time)
 end
 
@@ -303,15 +311,18 @@ function Render:layout()
 		local label = self.monitorLabels[index]
 		if frame and label then
 			self:syncLabel(label)
-			self:moveTo(frame, self:monitorY(index), self:measuredWidth(label.Text), self.config.motionTime)
+			self:syncPadding(label:FindFirstChildOfClass("UIPadding"))
+			self:moveTo(frame, self:monitorY(index), self:rowSize(label), self.config.motionTime)
 		end
 	end
 
 	for index, item in ipairs(self.items) do
 		if not item.dead then
 			self:syncLabel(item.label)
-			item.width = self:measuredWidth(item.label.Text)
-			self:moveTo(item.frame, self:rowY(index), item.width, self.config.motionTime)
+			self:syncPadding(item.label:FindFirstChildOfClass("UIPadding"))
+			local size = self:rowSize(item.label)
+			item.width = size.X
+			self:moveTo(item.frame, self:rowY(index), size, self.config.motionTime)
 		end
 	end
 end
@@ -355,8 +366,13 @@ end
 function Render:refreshItem(item, event)
 	local line = self.format:eventLine(event)
 	item.label.Text = line
-	item.width = self:measuredWidth(line)
+	item.width = self:rowSize(item.label).X
 	self:layout()
+	task.defer(function()
+		if not item.dead then
+			self:layout()
+		end
+	end)
 end
 
 function Render:startLive(item)
@@ -469,13 +485,13 @@ function Render:updateMonitorLine(index, event)
 
 	self:updateStackSize()
 	local line = self.format:eventLine(event)
-	local width = self:measuredWidth(line)
 	local y = self:monitorY(index)
 	local frame = self.monitorFrames[index]
 	local label = self.monitorLabels[index]
 
 	if not frame or not frame.Parent or not label then
-		frame, label = self:buildRow(line, event.name or `Monitor{index}`)
+		local width
+		frame, label, width = self:buildRow(line, event.name or `Monitor{index}`)
 		local offscreen = self:offscreenPosition(width)
 		frame.Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, y)
 		label.TextTransparency = 1
@@ -487,7 +503,14 @@ function Render:updateMonitorLine(index, event)
 	end
 
 	self:syncLabel(label)
-	self:moveTo(frame, y, width, self.config.motionTime)
+	self:syncPadding(label:FindFirstChildOfClass("UIPadding"))
+	local size = self:rowSize(label)
+	self:moveTo(frame, y, size, self.config.motionTime)
+	task.defer(function()
+		if frame.Parent then
+			self:layout()
+		end
+	end)
 end
 
 function Render:mount(parent)
@@ -525,9 +548,11 @@ function Render:mount(parent)
 	self.gui = gui
 	self.stack = stack
 	self.graph = imports.Graph.new(self)
+	
 	self:updateScale()
 	self:updateStackSize()
 	self:bindViewport()
+	
 	self.mounted = true
 end
 

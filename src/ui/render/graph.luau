@@ -75,7 +75,7 @@ function Graph:layout(y)
 
 		render.motion:to(card.textFrame, "move", {
 			Position = UDim2.new(rowX, 0, 0, y + height + gap),
-			Size = UDim2.fromOffset(card.textWidth, render:scaled(render.config.rowHeight)),
+			Size = UDim2.fromOffset(card.textSize.X, card.textSize.Y),
 		}, render.config.motionTime)
 
 		y += graphBlockHeight(render) + gap
@@ -183,8 +183,8 @@ function Graph:tooltipText(card, index)
 end
 
 function Graph:positionTooltip(card)
-	local textWidth = card.tooltip.TextBounds.X + self.render:scaled(8)
-	local textHeight = self.render:scaled(self.render.config.rowHeight)
+	local textWidth = card.tooltip.AbsoluteSize.X
+	local textHeight = card.tooltip.AbsoluteSize.Y
 	local stackPosition = self.render.stack.AbsolutePosition
 	local stackSize = self.render.stack.AbsoluteSize
 	local mouse = imports.UserInputService:GetMouseLocation()
@@ -194,8 +194,6 @@ function Graph:positionTooltip(card)
 
 	x = math.clamp(x, math.floor(textWidth / 2), stackSize.X - math.floor(textWidth / 2))
 	y = math.clamp(y, textHeight, stackSize.Y)
-
-	card.tooltip.Size = UDim2.fromOffset(textWidth, textHeight)
 
 	local shadowPad = self.render:scaled(4)
 	card.tooltipShadow.Size = UDim2.fromOffset(textWidth + shadowPad, textHeight + shadowPad)
@@ -323,8 +321,26 @@ end
 function Graph:fitText(card)
 	local line = self:headLine(card)
 	card.head.Text = line
-	card.textWidth = self.render:measuredWidth(line)
 	self.render:syncLabel(card.head)
+	self.render:syncPadding(card.head:FindFirstChildOfClass("UIPadding"))
+	card.textSize = self.render:rowSize(card.head)
+	card.textWidth = card.textSize.X
+	task.defer(function()
+		if not card.textFrame.Parent then
+			return
+		end
+
+		local resolvedSize = self.render:rowSize(card.head)
+		if resolvedSize == card.textSize then
+			return
+		end
+
+		card.textSize = resolvedSize
+		card.textWidth = resolvedSize.X
+		self.render.motion:to(card.textFrame, "move", {
+			Size = UDim2.fromOffset(resolvedSize.X, resolvedSize.Y),
+		}, self.render.config.motionTime)
+	end)
 end
 
 function Graph:slice(card)
@@ -461,7 +477,8 @@ function Graph:make(name, options)
 		tooltip = nil,
 		tooltipShadow = nil,
 		display = "--",
-		textWidth = render:scaled(render.config.minWidth),
+		textSize = Vector2.zero,
+		textWidth = 0,
 		minSeen = 0,
 		maxSeen = 0,
 		avgSeen = 0,
@@ -506,7 +523,7 @@ function Graph:make(name, options)
 	textFrame.AnchorPoint = render:rowAnchorPoint()
 	textFrame.Position =
 		UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:top() + height + render:scaled(render.config.gap))
-	textFrame.Size = UDim2.fromOffset(width, render:scaled(render.config.rowHeight))
+	textFrame.Size = UDim2.new()
 	textFrame.BackgroundColor3 = render.theme.background
 	textFrame.BackgroundTransparency = 0.62
 	textFrame.BorderSizePixel = 0
@@ -529,6 +546,11 @@ function Graph:make(name, options)
 	head.TextXAlignment = Enum.TextXAlignment.Left
 	head.TextYAlignment = Enum.TextYAlignment.Center
 	head.Parent = textFrame
+	render:syncLabel(head)
+
+	local headPadding = Instance.new("UIPadding")
+	headPadding.Parent = head
+	render:syncPadding(headPadding)
 
 	local tooltipShadow = Instance.new("ImageLabel")
 	tooltipShadow.Name = "TooltipShadow"
@@ -546,6 +568,7 @@ function Graph:make(name, options)
 	local tooltip = Instance.new("TextLabel")
 	tooltip.Name = "Tooltip"
 	tooltip.AnchorPoint = Vector2.new(0.5, 1)
+	tooltip.AutomaticSize = Enum.AutomaticSize.XY
 	tooltip.BackgroundTransparency = 1
 	tooltip.BorderSizePixel = 0
 	tooltip.FontFace = render.config.font
@@ -557,8 +580,12 @@ function Graph:make(name, options)
 	tooltip.TextYAlignment = Enum.TextYAlignment.Center
 	tooltip.Visible = false
 	tooltip.ZIndex = 6
-	tooltip.Size = UDim2.fromOffset(render:scaled(92), render:scaled(render.config.rowHeight))
+	tooltip.Size = UDim2.new()
 	tooltip.Parent = render.stack
+
+	local tooltipPadding = Instance.new("UIPadding")
+	tooltipPadding.Parent = tooltip
+	render:syncPadding(tooltipPadding)
 
 	local tooltipCorner = Instance.new("UICorner")
 	tooltipCorner.CornerRadius = render:cornerRadius()
@@ -586,7 +613,7 @@ function Graph:make(name, options)
 
 	render.motion:to(textFrame, "move", {
 		Position = UDim2.new(render:rowX(), 0, 0, textFrame.Position.Y.Offset),
-		Size = UDim2.fromOffset(card.textWidth, render:scaled(render.config.rowHeight)),
+		Size = UDim2.fromOffset(card.textSize.X, card.textSize.Y),
 	}, render.config.motionTime)
 
 	render:fadeIn(head)

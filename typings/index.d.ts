@@ -36,6 +36,13 @@ interface LoriWatch {
 	disconnect(): void;
 }
 
+interface LoriWatchOptions {
+	interval?: number;
+	action?: string;
+	scope?: string;
+	tone?: Tone;
+}
+
 interface LoriGraphOptions {
 	tone?: Tone;
 	style?: "bars";
@@ -72,7 +79,7 @@ interface LoriChannel {
 	warn(action?: string, fields?: Fields, duration?: number): void;
 	fail(action?: string, fields?: Fields, duration?: number): void;
 	error(action?: string, fields?: Fields, duration?: number): void;
-	watch(fields: Fields, options?: Fields): LoriWatch;
+	watch(fields: Fields, options?: LoriWatchOptions): LoriWatch;
 	time(action?: string): (fields?: Fields) => number;
 	measure<T>(action: string | undefined, callback: () => T): LuaTuple<[T, number]>;
 }
@@ -95,7 +102,7 @@ interface LoriApi {
 	unmount(): void;
 	destroy(): void;
 	setTheme(theme: LoriTheme): void;
-	setTemplate(template: unknown): void;
+	setTemplate(template: unknown, blacklist?: LoriItemBlacklist | string[]): void;
 	push(event?: LoriEvent | string): void;
 	dismiss(key: string): void;
 	clear(): void;
@@ -105,7 +112,7 @@ interface LoriApi {
 	record(scope?: string, action?: string, elapsedMs?: number, fields?: Fields): void;
 	time(scope?: string, action?: string): (fields?: Fields) => number;
 	measure<T>(scope: string | undefined, action: string | undefined, callback: () => T): LuaTuple<[T, number]>;
-	watch(key: string, fields: Fields, options?: Fields): LoriWatch;
+	watch(key: string, fields: Fields, options?: LoriWatchOptions): LoriWatch;
 	graph(name: string, options?: LoriGraphOptions): LoriGraph;
 	inspect(scope: string | undefined, value: unknown, duration?: number): void;
 	channel(scope: string): LoriChannel;
