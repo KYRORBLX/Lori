@@ -8,9 +8,11 @@ local imports = {
 	Players = game:GetService("Players"),
 	Workspace = game:GetService("Workspace"),
 
+	Bar = require("@self/bar"),
 	Format = require("./format"),
 	Graph = require("@self/graph"),
 	Motion = require("./motion"),
+	Tooltip = require("@self/tooltip"),
 }
 
 local Render = {}
@@ -37,6 +39,7 @@ function Render.new(config, theme, format, monitorRows)
 		config = config,
 		format = format,
 		theme = theme,
+		tooltip = nil,
 		graph = nil,
 		stack = nil,
 		scale = 1,
@@ -155,9 +158,16 @@ function Render:maxLineWidth()
 end
 
 function Render:contentHeight()
-	local rowStep = self:scaled(self.config.rowHeight) + self:scaled(self.config.gap)
-	local rowCount = #self.items
-	local rowsHeight = rowCount > 0 and (rowCount * rowStep - self:scaled(self.config.gap)) or 0
+	local gap = self:scaled(self.config.gap)
+	local rowsHeight = 0
+
+	for _, item in self.items do
+		rowsHeight += self:itemSize(item).Y + gap
+	end
+	if rowsHeight > 0 then
+		rowsHeight -= gap
+	end
+
 	return self:monitorOffset() + rowsHeight
 end
 
@@ -280,10 +290,13 @@ function Render:buildRow(line, name)
 	frame.Size = UDim2.fromOffset(size.X, size.Y)
 	task.defer(function()
 		if frame.Parent then
-			local resolvedSize = self:rowSize(label)
-			frame.Size = UDim2.fromOffset(resolvedSize.X, resolvedSize.Y)
+			self:layout()
 		end
 	end)
+
+	if self.tooltip then
+		self.tooltip:attach(frame, label)
+	end
 
 	return frame, label, size.X
 end
@@ -316,14 +329,23 @@ function Render:layout()
 		end
 	end
 
-	for index, item in ipairs(self.items) do
+	local y = self:monitorOffset()
+	local gap = self:scaled(self.config.gap)
+
+	for _, item in ipairs(self.items) do
 		if not item.dead then
 			self:syncLabel(item.label)
 			self:syncPadding(item.label:FindFirstChildOfClass("UIPadding"))
-			local size = self:rowSize(item.label)
-			item.width = size.X
-			self:moveTo(item.frame, self:rowY(index), size, self.config.motionTime)
 		end
+
+		local size = self:itemSize(item)
+		if not item.dead then
+			item.width = size.X
+			imports.Bar.layout(self, item)
+			self:moveTo(item.frame, y, size, self.config.motionTime)
+		end
+
+		y += size.Y + gap
 	end
 end
 
@@ -337,6 +359,10 @@ function Render:applyTheme()
 	for _, item in self.items do
 		item.frame.BackgroundColor3 = self.theme.background
 		item.label.TextColor3 = self.theme.text
+		imports.Bar.tint(self, item)
+	end
+	if self.tooltip then
+		self.tooltip:applyTheme()
 	end
 	if self.graph then
 		self.graph:applyTheme()
@@ -373,6 +399,11 @@ function Render:refreshItem(item, event)
 			self:layout()
 		end
 	end)
+end
+
+function Render:itemSize(item)
+	local size = self:rowSize(item.label)
+	return Vector2.new(size.X, size.Y + imports.Bar.extra(self, item))
 end
 
 function Render:startLive(item)
@@ -436,10 +467,11 @@ function Render:makeItem(event)
 		oldest.frame:Destroy()
 	end
 
+	imports.Bar.sync(self, item, true)
 	self:layout()
 	self:fadeIn(label)
 
-	if not event.sticky then
+	if not event.sticky and event.progress ~= true then
 		task.delay(event.duration or 3.2, function()
 			self:destroyItem(item)
 		end)
@@ -451,6 +483,7 @@ end
 function Render:updateItem(item, event)
 	item.event = event
 	self:refreshItem(item, event)
+	imports.Bar.sync(self, item, false)
 	self:startLive(item)
 end
 
@@ -547,6 +580,7 @@ function Render:mount(parent)
 
 	self.gui = gui
 	self.stack = stack
+	self.tooltip = imports.Tooltip.new(self)
 	self.graph = imports.Graph.new(self)
 	
 	self:updateScale()
@@ -573,12 +607,16 @@ function Render:unmount()
 		self.cameraConnection:Disconnect()
 	end
 
+	if self.tooltip then
+		self.tooltip:destroy()
+	end
 	if self.gui then
 		self.gui:Destroy()
 	end
 
 	self.gui = nil
 	self.stack = nil
+	self.tooltip = nil
 	self.graph = nil
 	self.viewportConnection = nil
 	self.cameraConnection = nil

@@ -91,6 +91,7 @@ for _, method in
 		"measure",
 		"watch",
 		"graph",
+		"progress",
 		"inspect",
 		"channel",
 		"group",

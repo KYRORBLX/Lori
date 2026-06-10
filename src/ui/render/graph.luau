@@ -6,7 +6,6 @@
 
 local imports = {
 	Style = require("../styles/bars"),
-	UserInputService = game:GetService("UserInputService"),
 }
 
 local Graph = {}
@@ -182,64 +181,14 @@ function Graph:tooltipText(card, index)
 	return `{card.name} [{index}]: {self:formatValue(card, value)}`
 end
 
-function Graph:positionTooltip(card)
-	local textWidth = card.tooltip.AbsoluteSize.X
-	local textHeight = card.tooltip.AbsoluteSize.Y
-	local stackPosition = self.render.stack.AbsolutePosition
-	local stackSize = self.render.stack.AbsoluteSize
-	local mouse = imports.UserInputService:GetMouseLocation()
-
-	local x = mouse.X - stackPosition.X
-	local y = mouse.Y - stackPosition.Y - textHeight - self.render:scaled(34)
-
-	x = math.clamp(x, math.floor(textWidth / 2), stackSize.X - math.floor(textWidth / 2))
-	y = math.clamp(y, textHeight, stackSize.Y)
-
-	local shadowPad = self.render:scaled(4)
-	card.tooltipShadow.Size = UDim2.fromOffset(textWidth + shadowPad, textHeight + shadowPad)
-
-	self.render.motion:to(card.tooltip, "tooltipMove", {
-		Position = UDim2.fromOffset(x, y),
-	}, 0.1)
-
-	self.render.motion:to(card.tooltipShadow, "tooltipMove", {
-		Position = UDim2.fromOffset(x, y + math.floor(shadowPad / 2)),
-	}, 0.1)
-end
-
 function Graph:showTooltip(card, index)
-	card.tooltip.Text = self:tooltipText(card, index)
-	self:positionTooltip(card)
-	card.tooltip.Visible = true
-	card.tooltipShadow.Visible = true
 	card.hoveredIndex = index
-
-	self.render.motion:to(card.tooltip, "fade", {
-		TextTransparency = 0,
-	}, self.render.config.fadeTime)
-
-	self.render.motion:to(card.tooltipShadow, "fade", {
-		ImageTransparency = 0.88,
-	}, self.render.config.fadeTime)
+	self.render.tooltip:show(self:tooltipText(card, index))
 end
 
 function Graph:hideTooltip(card)
 	card.hoveredIndex = nil
-
-	self.render.motion:to(card.tooltip, "fade", {
-		TextTransparency = 1,
-	}, self.render.config.fadeTime)
-
-	self.render.motion:to(card.tooltipShadow, "fade", {
-		ImageTransparency = 1,
-	}, self.render.config.fadeTime)
-
-	task.delay(self.render.config.fadeTime, function()
-		if card.hoveredIndex == nil then
-			card.tooltip.Visible = false
-			card.tooltipShadow.Visible = false
-		end
-	end)
+	self.render.tooltip:hide()
 
 	self:slice(card)
 	self:updateStats(card)
@@ -474,8 +423,6 @@ function Graph:make(name, options)
 		warnBelow = tonumber(options.warnBelow),
 		failBelow = tonumber(options.failBelow),
 		hoveredIndex = nil,
-		tooltip = nil,
-		tooltipShadow = nil,
 		display = "--",
 		textSize = Vector2.zero,
 		textWidth = 0,
@@ -552,51 +499,14 @@ function Graph:make(name, options)
 	headPadding.Parent = head
 	render:syncPadding(headPadding)
 
-	local tooltipShadow = Instance.new("ImageLabel")
-	tooltipShadow.Name = "TooltipShadow"
-	tooltipShadow.AnchorPoint = Vector2.new(0.5, 1)
-	tooltipShadow.BackgroundTransparency = 1
-	tooltipShadow.Image = "rbxassetid://1316045217"
-	tooltipShadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
-	tooltipShadow.ImageTransparency = 1
-	tooltipShadow.ScaleType = Enum.ScaleType.Slice
-	tooltipShadow.SliceCenter = Rect.new(10, 10, 118, 118)
-	tooltipShadow.Visible = false
-	tooltipShadow.ZIndex = 5
-	tooltipShadow.Parent = render.stack
-
-	local tooltip = Instance.new("TextLabel")
-	tooltip.Name = "Tooltip"
-	tooltip.AnchorPoint = Vector2.new(0.5, 1)
-	tooltip.AutomaticSize = Enum.AutomaticSize.XY
-	tooltip.BackgroundTransparency = 1
-	tooltip.BorderSizePixel = 0
-	tooltip.FontFace = render.config.font
-	tooltip.RichText = false
-	tooltip.TextColor3 = render.theme.text
-	tooltip.TextSize = render.config.textSize
-	tooltip.TextTransparency = 1
-	tooltip.TextXAlignment = Enum.TextXAlignment.Center
-	tooltip.TextYAlignment = Enum.TextYAlignment.Center
-	tooltip.Visible = false
-	tooltip.ZIndex = 6
-	tooltip.Size = UDim2.new()
-	tooltip.Parent = render.stack
-
-	local tooltipPadding = Instance.new("UIPadding")
-	tooltipPadding.Parent = tooltip
-	render:syncPadding(tooltipPadding)
-
-	local tooltipCorner = Instance.new("UICorner")
-	tooltipCorner.CornerRadius = render:cornerRadius()
-	tooltipCorner.Parent = tooltip
-
 	card.textFrame = textFrame
-	card.tooltip = tooltip
-	card.tooltipShadow = tooltipShadow
 	card.frame = frame
 	card.plot = plot
 	card.head = head
+
+	if render.tooltip then
+		render.tooltip:attach(textFrame, head)
+	end
 
 	self:buildColumns(card)
 	self:fitText(card)
@@ -692,8 +602,6 @@ function Graph:remove(name)
 
 		card.frame:Destroy()
 		card.textFrame:Destroy()
-		card.tooltip:Destroy()
-		card.tooltipShadow:Destroy()
 		render:layout()
 	end)
 end
@@ -705,12 +613,6 @@ function Graph:clear()
 		end
 		if card.textFrame then
 			card.textFrame:Destroy()
-		end
-		if card.tooltip then
-			card.tooltip:Destroy()
-		end
-		if card.tooltipShadow then
-			card.tooltipShadow:Destroy()
 		end
 	end
 

@@ -182,6 +182,7 @@ function Client.new(inputOptions: Types.ClientOptions?): Types.Client
 		"measure",
 		"watch",
 		"graph",
+		"progress",
 		"inspect",
 		"emit",
 		"channel",
@@ -362,7 +363,9 @@ function Client:watch(key, fields, options)
 	end
 
 	watch.connected = true
-	bindDotMethods(watch, watch, { "disconnect" })
+	bindDotMethods(watch, watch, {
+		"disconnect",
+	})
 	self.watches[key] = watch
 
 	return watch
@@ -374,7 +377,11 @@ function Client:graph(name, options)
 		function noop:push() end
 		function noop:rescale() end
 		function noop:remove() end
-		bindDotMethods(noop, noop, { "push", "rescale", "remove" })
+		bindDotMethods(noop, noop, {
+			"push",
+			"rescale",
+			"remove",
+		})
 		return noop
 	end
 
@@ -399,9 +406,24 @@ function Client:graph(name, options)
 		client.render:removeGraph(name)
 	end
 
-	bindDotMethods(handle, handle, { "push", "rescale", "remove" })
+	bindDotMethods(handle, handle, {
+		"push",
+		"rescale",
+		"remove",
+	})
 
 	return handle
+end
+
+function Client:progress(scope, action, duration, fields)
+	self:push({
+		fields = fields,
+		duration = duration,
+		action = action or "progress",
+		scope = scope or "runtime",
+		tone = "phase",
+		progress = true,
+	})
 end
 
 function Client:inspect(scope, value, duration)
@@ -440,7 +462,17 @@ function Client:channel(scope)
 	end
 
 	local channel = {}
-	for _, method in { "trace", "info", "phase", "success", "warn", "fail", "error" } do
+	for _, method in
+		{
+			"trace",
+			"info",
+			"phase",
+			"success",
+			"warn",
+			"fail",
+			"error",
+		}
+	do
 		bindChannel(channel, method, scope)
 	end
 
@@ -459,7 +491,11 @@ function Client:channel(scope)
 	end
 
 	channel._client = self
-	bindDotMethods(channel, channel, { "watch", "time", "measure" })
+	bindDotMethods(channel, channel, {
+		"watch",
+		"time",
+		"measure",
+	})
 	self.channels[scope] = channel
 
 	return channel

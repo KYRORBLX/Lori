@@ -16,6 +16,7 @@ export type Event = {
 	duration: number?,
 	sticky: boolean?,
 	liveInterval: number?,
+	progress: (boolean | number)?,
 }
 
 export type Token = {
@@ -104,6 +105,7 @@ export type Client = {
 	measure: <T>(self: Client, scope: string?, action: string?, callback: () -> T) -> (T, number),
 	watch: (self: Client, key: string, fields: Fields?, options: WatchOptions?) -> Watch,
 	graph: (self: Client, name: string, options: GraphOptions?) -> GraphHandle,
+	progress: (self: Client, scope: string?, action: string?, duration: number?, fields: Fields?) -> (),
 	inspect: (self: Client, scope: string?, value: any, duration: number?) -> (),
 	emit: (self: Client, tone: Tone, scope: string?, action: string?, fields: Fields?, duration: number?) -> (),
 	channel: (self: Client, scope: string) -> Channel,
@@ -140,6 +142,7 @@ export type LoriApi = {
 	measure: <T>(scope: string?, action: string?, callback: () -> T) -> (T, number),
 	watch: (key: string, fields: Fields?, options: WatchOptions?) -> Watch,
 	graph: (name: string, options: GraphOptions?) -> GraphHandle,
+	progress: (scope: string?, action: string?, duration: number?, fields: Fields?) -> (),
 	inspect: (scope: string?, value: any, duration: number?) -> (),
 	channel: (scope: string) -> Channel,
 	group: (scope: string) -> Channel,

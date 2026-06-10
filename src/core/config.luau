@@ -57,6 +57,8 @@ Config.groups = {
 	rows = {
 		maxItems = 30,
 		liveInterval = 0.5,
+		copyEnabled = true,
+		progressSegmentWidth = 10,
 	},
 
 	motion = {

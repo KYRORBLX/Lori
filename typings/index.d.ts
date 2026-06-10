@@ -24,6 +24,7 @@ interface LoriEvent {
 	duration?: number;
 	sticky?: boolean;
 	liveInterval?: number;
+	progress?: boolean | number;
 }
 
 interface LoriToken {
@@ -95,6 +96,8 @@ interface LoriOptions extends Record<string, unknown> {
 	topOffset?: number;
 	bottomOffset?: number;
 	cornerRadius?: number;
+	copyEnabled?: boolean;
+	progressSegmentWidth?: number;
 }
 
 interface LoriApi {
@@ -114,6 +117,7 @@ interface LoriApi {
 	measure<T>(scope: string | undefined, action: string | undefined, callback: () => T): LuaTuple<[T, number]>;
 	watch(key: string, fields: Fields, options?: LoriWatchOptions): LoriWatch;
 	graph(name: string, options?: LoriGraphOptions): LoriGraph;
+	progress(scope?: string, action?: string, duration?: number, fields?: Fields): void;
 	inspect(scope: string | undefined, value: unknown, duration?: number): void;
 	channel(scope: string): LoriChannel;
 	group(scope: string): LoriChannel;

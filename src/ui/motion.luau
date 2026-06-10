@@ -47,7 +47,7 @@ function Motion:track(instance)
 	return track
 end
 
-function Motion:to(instance, channel, goal, time)
+function Motion:to(instance, channel, goal, time, style)
 	local track = self:track(instance)
 	local active = track[channel]
 
@@ -59,7 +59,7 @@ function Motion:to(instance, channel, goal, time)
 		active.tween:Cancel()
 	end
 
-	local info = TweenInfo.new(time or self.config.motionTime, self.config.motionStyle, Enum.EasingDirection.Out)
+	local info = TweenInfo.new(time or self.config.motionTime, style or self.config.motionStyle, Enum.EasingDirection.Out)
 	local record = { goal = goal, tween = imports.TweenService:Create(instance, info, goal), done = false }
 	track[channel] = record
 
