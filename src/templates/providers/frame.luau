@@ -17,6 +17,7 @@ function Frame.new(row)
 		row = row,
 		renderConnection = nil,
 		heartbeatConnection = nil,
+		client = nil,
 		accum = 0,
 		framesSeen = 0,
 		heartbeatAccum = 0,
@@ -29,12 +30,16 @@ function Frame:start(client)
 		return
 	end
 
-	client.render:updateMonitorLine(self.row, {
+	self.client = client
+	client:push({
+		key = self.id,
+		sticky = true,
+		pinned = true,
+		order = self.row,
 		fields = { dt = "--", r = "--", hb = "--", sp = "--" },
 		action = "core",
 		scope = "runtime.frame",
 		tone = "phase",
-		name = "Frame",
 	})
 
 	self.heartbeatConnection = imports.RunService.Heartbeat:Connect(function(deltaTime)
@@ -69,7 +74,11 @@ function Frame:start(client)
 		local tone = fps >= 55 and avgFrameMs < 19 and not spikeActive and "success"
 			or (fps >= 40 and avgFrameMs < 28 and "warn" or "error")
 
-		client.render:updateMonitorLine(self.row, {
+		client:push({
+			key = self.id,
+			sticky = true,
+			pinned = true,
+			order = self.row,
 			fields = {
 				sp = spikeActive and string.format("%.1fms", client.perf.lastSpikeMs) or "-",
 				hb = string.format("%.1fms", client.monitor.heartbeatMs),
@@ -79,7 +88,6 @@ function Frame:start(client)
 
 			scope = "runtime.frame",
 			action = "core",
-			name = "Frame",
 			tone = tone,
 		})
 
@@ -97,8 +105,13 @@ function Frame:stop()
 		self.heartbeatConnection:Disconnect()
 	end
 
+	if self.client then
+		self.client:dismiss(self.id)
+	end
+
 	self.renderConnection = nil
 	self.heartbeatConnection = nil
+	self.client = nil
 	self.accum = 0
 	self.framesSeen = 0
 	self.heartbeatAccum = 0

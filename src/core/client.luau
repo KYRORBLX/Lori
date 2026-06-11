@@ -169,6 +169,10 @@ function Client.new(inputOptions: Types.ClientOptions?): Types.Client
 
 	bindDotMethods(self, Client, {
 		"isActive",
+		"setVisible",
+		"toggleVisible",
+		"show",
+		"hide",
 		"setTheme",
 		"setTemplate",
 		"mount",
@@ -211,6 +215,25 @@ function Client:isActive()
 	return not self.config.studioOnly or imports.RunService:IsStudio()
 end
 
+function Client:setVisible(visible)
+	self.config.uiVisible = visible ~= false
+	self.render:setVisible(self.config.uiVisible)
+	return self.config.uiVisible
+end
+
+function Client:toggleVisible(force)
+	local visible = if type(force) == "boolean" then force else not self.config.uiVisible
+	return self:setVisible(visible)
+end
+
+function Client:show()
+	return self:setVisible(true)
+end
+
+function Client:hide()
+	return self:setVisible(false)
+end
+
 function Client:setTheme(theme)
 	self.theme = imports.Config.mergeTheme(theme)
 	self.format = imports.Format.new(self.theme)
@@ -240,6 +263,7 @@ end
 function Client:mount(parent, options)
 	if options then
 		applyConfig(self.config, options)
+		self.render:setVisible(self.config.uiVisible)
 
 		if options.theme then
 			self:setTheme(options.theme)

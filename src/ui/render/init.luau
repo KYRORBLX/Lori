@@ -33,8 +33,6 @@ function Render.new(config, theme, format, monitorRows)
 		monitorRows = monitorRows or 0,
 		viewportConnection = nil,
 		cameraConnection = nil,
-		monitorFrames = {},
-		monitorLabels = {},
 		mounted = false,
 		config = config,
 		format = format,
@@ -108,8 +106,19 @@ function Render:scaled(value)
 	return math.max(1, math.floor(value * self.scale + 0.5))
 end
 
+function Render:gap()
+	return self:scaled(self.config.gap)
+end
+
 function Render:isLeftAligned()
 	return self.stack and self.stack.AnchorPoint.X == 0
+end
+
+function Render:setVisible(visible)
+	self.config.uiVisible = visible ~= false
+	if self.gui then
+		self.gui.Enabled = self.config.uiVisible
+	end
 end
 
 function Render:rowAnchorPoint()
@@ -158,7 +167,7 @@ function Render:maxLineWidth()
 end
 
 function Render:contentHeight()
-	local gap = self:scaled(self.config.gap)
+	local gap = self:gap()
 	local rowsHeight = 0
 
 	for _, item in self.items do
@@ -235,22 +244,15 @@ function Render:rowSize(label)
 end
 
 function Render:monitorOffset()
-	local monitorHeight = self.config.monitorEnabled
-			and (self:scaled(self.config.rowHeight) + self:scaled(self.config.gap)) * self.monitorRows
-		or 0
-	return self:graphOffset() + monitorHeight
+	return self:graphOffset()
 end
 
 function Render:graphOffset()
 	return self.graph and self.graph:height() or 0
 end
 
-function Render:monitorY(index)
-	return self:graphOffset() + (index - 1) * (self:scaled(self.config.rowHeight) + self:scaled(self.config.gap))
-end
-
 function Render:rowY(index)
-	return self:monitorOffset() + (index - 1) * (self:scaled(self.config.rowHeight) + self:scaled(self.config.gap))
+	return self:monitorOffset()
 end
 
 function Render:buildRow(line, name)
@@ -320,17 +322,8 @@ function Render:layout()
 		self.graph:layout(self.graph:top())
 	end
 
-	for index, frame in self.monitorFrames do
-		local label = self.monitorLabels[index]
-		if frame and label then
-			self:syncLabel(label)
-			self:syncPadding(label:FindFirstChildOfClass("UIPadding"))
-			self:moveTo(frame, self:monitorY(index), self:rowSize(label), self.config.motionTime)
-		end
-	end
-
 	local y = self:monitorOffset()
-	local gap = self:scaled(self.config.gap)
+	local gap = self:gap()
 
 	for _, item in ipairs(self.items) do
 		if not item.dead then
@@ -350,12 +343,6 @@ function Render:layout()
 end
 
 function Render:applyTheme()
-	for _, frame in self.monitorFrames do
-		frame.BackgroundColor3 = self.theme.background
-	end
-	for _, label in self.monitorLabels do
-		label.TextColor3 = self.theme.text
-	end
 	for _, item in self.items do
 		item.frame.BackgroundColor3 = self.theme.background
 		item.label.TextColor3 = self.theme.text
@@ -436,6 +423,65 @@ function Render:startLive(item)
 	end)
 end
 
+local function pinnedOrder(item)
+	if not item.event or not item.event.pinned then
+		return nil
+	end
+
+	return tonumber(item.event.order) or 0
+end
+
+function Render:insertItem(item)
+	local order = pinnedOrder(item)
+	if order ~= nil then
+		local index = 1
+		while index <= #self.items do
+			local otherOrder = pinnedOrder(self.items[index])
+			if otherOrder == nil or order < otherOrder then
+				break
+			end
+			index += 1
+		end
+
+		table.insert(self.items, index, item)
+		return
+	end
+
+	local index = 1
+	while index <= #self.items and pinnedOrder(self.items[index]) ~= nil do
+		index += 1
+	end
+
+	table.insert(self.items, index, item)
+end
+
+function Render:regularItemCount()
+	local count = 0
+	for _, item in self.items do
+		if pinnedOrder(item) == nil then
+			count += 1
+		end
+	end
+
+	return count
+end
+
+function Render:trimItems()
+	while self:regularItemCount() > self.config.maxItems do
+		for index = #self.items, 1, -1 do
+			local item = self.items[index]
+			if pinnedOrder(item) == nil then
+				table.remove(self.items, index)
+				item.dead = true
+				self.motion:cancel(item.frame)
+				self:dropKey(item)
+				item.frame:Destroy()
+				break
+			end
+		end
+	end
+end
+
 function Render:makeItem(event)
 	self.serial += 1
 
@@ -454,18 +500,12 @@ function Render:makeItem(event)
 		event = event,
 		liveRunning = false,
 	}
-	table.insert(self.items, 1, item)
+	self:insertItem(item)
 	if event.key then
 		self.keyed[event.key] = item
 	end
 
-	while #self.items > self.config.maxItems do
-		local oldest = table.remove(self.items)
-		oldest.dead = true
-		self.motion:cancel(oldest.frame)
-		self:dropKey(oldest)
-		oldest.frame:Destroy()
-	end
+	self:trimItems()
 
 	imports.Bar.sync(self, item, true)
 	self:layout()
@@ -511,41 +551,6 @@ function Render:destroyItem(item)
 	end)
 end
 
-function Render:updateMonitorLine(index, event)
-	if not self.config.monitorEnabled or not self.stack then
-		return
-	end
-
-	self:updateStackSize()
-	local line = self.format:eventLine(event)
-	local y = self:monitorY(index)
-	local frame = self.monitorFrames[index]
-	local label = self.monitorLabels[index]
-
-	if not frame or not frame.Parent or not label then
-		local width
-		frame, label, width = self:buildRow(line, event.name or `Monitor{index}`)
-		local offscreen = self:offscreenPosition(width)
-		frame.Position = UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, y)
-		label.TextTransparency = 1
-		self.monitorFrames[index] = frame
-		self.monitorLabels[index] = label
-		self:fadeIn(label)
-	else
-		label.Text = line
-	end
-
-	self:syncLabel(label)
-	self:syncPadding(label:FindFirstChildOfClass("UIPadding"))
-	local size = self:rowSize(label)
-	self:moveTo(frame, y, size, self.config.motionTime)
-	task.defer(function()
-		if frame.Parent then
-			self:layout()
-		end
-	end)
-end
-
 function Render:mount(parent)
 	parent = resolveParent(parent)
 	if not parent then
@@ -560,6 +565,7 @@ function Render:mount(parent)
 	gui.IgnoreGuiInset = true
 	gui.ResetOnSpawn = false
 	gui.DisplayOrder = self.config.displayOrder
+	gui.Enabled = self.config.uiVisible ~= false
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = parent
 
@@ -595,8 +601,6 @@ function Render:unmount()
 		item.dead = true
 	end
 
-	table.clear(self.monitorFrames)
-	table.clear(self.monitorLabels)
 	table.clear(self.items)
 	table.clear(self.keyed)
 

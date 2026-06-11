@@ -15,6 +15,8 @@ export type Event = {
 	key: string?,
 	duration: number?,
 	sticky: boolean?,
+	pinned: boolean?,
+	order: number?,
 	liveInterval: number?,
 	progress: (boolean | number)?,
 }
@@ -92,6 +94,10 @@ export type Channel = {
 
 export type Client = {
 	isActive: (self: Client) -> boolean,
+	setVisible: (self: Client, visible: boolean) -> boolean,
+	toggleVisible: (self: Client, force: boolean?) -> boolean,
+	show: (self: Client) -> boolean,
+	hide: (self: Client) -> boolean,
 	setTheme: (self: Client, theme: Theme?) -> (),
 	setTemplate: (self: Client, template: any, blacklist: any?) -> (),
 	mount: (self: Client, parent: Instance?, options: ClientOptions?) -> (),
@@ -131,6 +137,10 @@ export type LoriApi = {
 	mount: (parent: Instance?, options: ClientOptions?) -> (),
 	unmount: () -> (),
 	destroy: () -> (),
+	setVisible: (visible: boolean) -> boolean,
+	toggleVisible: (force: boolean?) -> boolean,
+	show: () -> boolean,
+	hide: () -> boolean,
 	setTheme: (theme: Theme?) -> (),
 	setTemplate: (template: any, blacklist: any?) -> (),
 	push: (event: Event | string) -> (),

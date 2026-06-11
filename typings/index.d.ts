@@ -23,6 +23,8 @@ interface LoriEvent {
 	key?: string;
 	duration?: number;
 	sticky?: boolean;
+	pinned?: boolean;
+	order?: number;
 	liveInterval?: number;
 	progress?: boolean | number;
 }
@@ -98,12 +100,19 @@ interface LoriOptions extends Record<string, unknown> {
 	cornerRadius?: number;
 	copyEnabled?: boolean;
 	progressSegmentWidth?: number;
+	uiVisible?: boolean;
+	visible?: boolean;
+	showUI?: boolean;
 }
 
 interface LoriApi {
 	mount(parent?: Instance, options?: LoriOptions): void;
 	unmount(): void;
 	destroy(): void;
+	setVisible(visible: boolean): boolean;
+	toggleVisible(force?: boolean): boolean;
+	show(): boolean;
+	hide(): boolean;
 	setTheme(theme: LoriTheme): void;
 	setTemplate(template: unknown, blacklist?: LoriItemBlacklist | string[]): void;
 	push(event?: LoriEvent | string): void;

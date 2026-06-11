@@ -19,8 +19,9 @@ local function graphHeight(render)
 	return render.config.graphHeight
 end
 
-local function graphBlockHeight(render)
-	return graphHeight(render) + render.config.gap + render.config.rowHeight
+local function graphBlockHeight(render, card)
+	local textHeight = card and card.textSize and card.textSize.Y > 0 and card.textSize.Y or render:scaled(render.config.rowHeight)
+	return graphHeight(render) + render:gap() + textHeight
 end
 
 function Graph.new(render)
@@ -36,25 +37,23 @@ function Graph:top()
 end
 
 function Graph:height()
-	local count = 0
+	local height = 0
+	local gap = self.render:gap()
+
 	for _, card in self.order do
 		if not card.dead then
-			count += 1
+			height += graphBlockHeight(self.render, card) + gap
 		end
 	end
 
-	if count == 0 then
-		return 0
-	end
-
-	return count * graphBlockHeight(self.render) + count * self.render:scaled(self.render.config.gap)
+	return height
 end
 
 function Graph:layout(y)
 	local render = self.render
 	local width = graphWidth(render)
 	local height = graphHeight(render)
-	local gap = render:scaled(render.config.gap)
+	local gap = render:gap()
 
 	for _, card in self.order do
 		if card.dead then
@@ -77,7 +76,7 @@ function Graph:layout(y)
 			Size = UDim2.fromOffset(card.textSize.X, card.textSize.Y),
 		}, render.config.motionTime)
 
-		y += graphBlockHeight(render) + gap
+		y += graphBlockHeight(render, card) + gap
 	end
 end
 
@@ -289,6 +288,7 @@ function Graph:fitText(card)
 		self.render.motion:to(card.textFrame, "move", {
 			Size = UDim2.fromOffset(resolvedSize.X, resolvedSize.Y),
 		}, self.render.config.motionTime)
+		self.render:layout()
 	end)
 end
 
@@ -469,7 +469,7 @@ function Graph:make(name, options)
 	textFrame.Name = `LoriGraphText_{render.serial}`
 	textFrame.AnchorPoint = render:rowAnchorPoint()
 	textFrame.Position =
-		UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:top() + height + render:scaled(render.config.gap))
+		UDim2.new(offscreen.X.Scale, offscreen.X.Offset, 0, self:top() + height + render:gap())
 	textFrame.Size = UDim2.new()
 	textFrame.BackgroundColor3 = render.theme.background
 	textFrame.BackgroundTransparency = 0.62

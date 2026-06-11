@@ -42,6 +42,7 @@ Config.groups = {
 		padX = 7,
 		cornerRadius = 0.3,
 		textSize = 10,
+		uiVisible = true,
 		displayOrder = 118,
 		font = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Medium, Enum.FontStyle.Normal),
 		measureFont = Enum.Font.RobotoMono,
@@ -130,6 +131,14 @@ function Config.applyAliases(config)
 
 	if type(config.fontSize) == "number" then
 		config.textSize = config.fontSize
+	end
+
+	if type(config.visible) == "boolean" then
+		config.uiVisible = config.visible
+	end
+
+	if type(config.showUI) == "boolean" then
+		config.uiVisible = config.showUI
 	end
 
 	if type(config.monitorInterval) == "number" then

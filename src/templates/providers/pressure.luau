@@ -15,6 +15,7 @@ function Pressure.new(row)
 	return setmetatable({
 		id = "runtime.perf",
 		connection = nil,
+		client = nil,
 		lastPerf = 0,
 		row = row,
 	}, Pressure)
@@ -25,11 +26,15 @@ function Pressure:start(client)
 		return
 	end
 
-	client.render:updateMonitorLine(self.row, {
+	self.client = client
+	client:push({
+		key = self.id,
+		sticky = true,
+		pinned = true,
+		order = self.row,
 		fields = { peak = "-", why = "-", t = "0ms", own = "0ms", cast = 0 },
 		scope = "runtime.perf",
 		action = "pressure",
-		name = "Pressure",
 		tone = "phase",
 	})
 
@@ -44,7 +49,11 @@ function Pressure:start(client)
 		local summary = client.perf:summary()
 		local cause = client.perf:causeSummary(client.monitor.frameMs)
 
-		client.render:updateMonitorLine(self.row, {
+		client:push({
+			key = self.id,
+			sticky = true,
+			pinned = true,
+			order = self.row,
 			fields = {
 				cast = summary.casts,
 				own = cause.tracked,
@@ -59,8 +68,6 @@ function Pressure:start(client)
 				then "error"
 				elseif client.monitor.frameMs >= 28 or client.monitor.heartbeatMs >= 28 then "warn"
 				else "phase",
-
-			name = "Pressure",
 		})
 
 		client.perf:resetWindow()
@@ -72,7 +79,12 @@ function Pressure:stop()
 		self.connection:Disconnect()
 	end
 
+	if self.client then
+		self.client:dismiss(self.id)
+	end
+
 	self.connection = nil
+	self.client = nil
 	self.lastPerf = 0
 end
 

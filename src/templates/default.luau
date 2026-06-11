@@ -43,7 +43,7 @@ return function(blacklistedItems)
 
 	return {
 		id = "performance",
-		monitorRows = 2,
+		monitorRows = 0,
 		providers = activeProviders,
 	}
 end

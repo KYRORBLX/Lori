@@ -325,6 +325,8 @@ Main color keys:
 Common options:
 
 - `studioOnly`: only run in Studio
+- `enabled`: disables Lori entirely when false
+- `uiVisible` / `visible` / `showUI`: mount and keep updating Lori, but hide or show the `ScreenGui`
 - `maxItems`: max trace rows
 - `interval`: update delay in seconds, default `0.1`
 - `minInterval`: lowest allowed update delay, default `0.04`
@@ -357,12 +359,34 @@ lori:mount(nil, { config = { maxItems = 8 } })
 
 Viewport scaling changes the actual text size, row size, padding, and graph size together, so the text measurement stays correct.
 
+## UI Visibility
+
+Use `enabled = false` when you want Lori to do nothing. Use `uiVisible = false` when you want Lori mounted and collecting/updating rows, but hidden from the player.
+
+```luau
+local lori = Lori.create({
+	uiVisible = false,
+})
+
+lori:mount()
+lori:show()
+lori:hide()
+lori:toggleVisible()
+lori:setVisible(true)
+```
+
+The aliases `visible` and `showUI` are accepted in config too, so teams can use whichever reads best in their settings module.
+
 ## API
 
 ```luau
 Lori.create(options?)
 
 lori:mount(parent?, options?)
+lori:setVisible(visible)
+lori:toggleVisible(force?)
+lori:show()
+lori:hide()
 lori:trace(scope, action, fields?, duration?)
 lori:phase(scope, action, fields?, duration?)
 lori:success(scope, action, fields?, duration?)

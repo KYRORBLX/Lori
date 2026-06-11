@@ -80,6 +80,10 @@ end
 for _, method in
 	{
 		"mount",
+		"setVisible",
+		"toggleVisible",
+		"show",
+		"hide",
 		"setTheme",
 		"setTemplate",
 		"push",
