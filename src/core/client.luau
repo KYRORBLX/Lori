@@ -373,6 +373,8 @@ function Client:watch(key, fields, options)
 		scope = options.scope or key,
 		tone = options.tone or "phase",
 		sticky = true,
+		pinned = options.pinned,
+		order = options.order,
 		key = key,
 	}
 	self:push(event)

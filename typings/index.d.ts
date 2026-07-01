@@ -55,6 +55,7 @@ interface LoriGraphOptions {
 	failAt?: number;
 	warnBelow?: number;
 	failBelow?: number;
+	lowStats?: boolean;
 	format?: (value: number) => unknown;
 }
 
@@ -71,7 +72,6 @@ interface LoriItemBlacklist {
 	Frame(): LoriItemBlacklist;
 	Memory(): LoriItemBlacklist;
 	Ping(): LoriItemBlacklist;
-	Pressure(): LoriItemBlacklist;
 }
 
 interface LoriChannel {

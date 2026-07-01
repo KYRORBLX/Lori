@@ -72,6 +72,8 @@ export type WatchOptions = {
 	action: string?,
 	scope: string?,
 	tone: Tone?,
+	pinned: boolean?,
+	order: number?,
 }
 
 export type Watch = {

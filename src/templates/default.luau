@@ -9,12 +9,10 @@ local imports = {
 	Frame = require("./providers/frame"),
 	MemGraph = require("./providers/memgraph"),
 	PingGraph = require("./providers/pinggraph"),
-	Pressure = require("./providers/pressure"),
 }
 
 local providers = {
 	{ name = "Frame", module = imports.Frame, row = 1 },
-	{ name = "Pressure", module = imports.Pressure, row = 2 },
 	{ name = "PingGraph", module = imports.PingGraph },
 	{ name = "FpsGraph", module = imports.FpsGraph },
 	{ name = "MemGraph", module = imports.MemGraph },

@@ -33,10 +33,12 @@ function FpsGraph:start(client)
 		style = "bars",
 		warnBelow = 45,
 		failBelow = 30,
+		lowStats = true,
 	})
 
 	self.connection = imports.RunService.RenderStepped:Connect(function(deltaTime)
 		self.fps += (1 / math.max(deltaTime, 1e-4) - self.fps) * 0.1
+		client.render:recordGraph("fps", 1 / math.max(deltaTime, 1e-4))
 
 		local now = os.clock()
 		if now - self.lastSample < client.config.monitorInterval then

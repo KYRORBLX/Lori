@@ -267,7 +267,6 @@ lori:mount(nil, {
 That adds:
 
 - FPS/frame row
-- perf pressure row
 - ping graph
 - FPS graph
 - memory graph
@@ -282,7 +281,7 @@ lori:mount(nil, {
 })
 ```
 
-That example keeps the frame/perf rows and ping graph, but removes the memory and FPS graphs.
+That example keeps the frame row and ping graph, but removes the memory and FPS graphs.
 
 Plain string tables also work:
 
@@ -296,7 +295,6 @@ lori:mount(nil, {
 Provider names:
 
 - `Frame`
-- `Pressure`
 - `PingGraph`
 - `FpsGraph`
 - `MemGraph`
@@ -335,7 +333,7 @@ Common options:
 - `position`: legacy top-right offset alias
 - `width`: max row width, `0` means automatic
 - `fontSize`, `rowHeight`, `gap`, `padX`, `cornerRadius`
-- `graphWidth`, `graphHeight`, `graphColumns`
+- `graphWidth`, `graphHeight`, `graphColumns`, `statsSamples`
 - `motionTime`, `exitTime`, `fadeTime`
 - `uiScale`, `scaleBaseWidth`, `minScale`, `maxScale`
 

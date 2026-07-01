@@ -670,6 +670,12 @@ function Render:pushGraph(name, value)
 	end
 end
 
+function Render:recordGraph(name, value)
+	if self.graph then
+		self.graph:record(name, value)
+	end
+end
+
 function Render:rescaleGraph(name, factor)
 	if self.graph then
 		self.graph:rescale(name, factor)

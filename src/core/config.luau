@@ -74,6 +74,7 @@ Config.groups = {
 		graphHeight = 30,
 		graphColumns = 40,
 		graphTweenTime = 0.18,
+		statsSamples = 2048,
 	},
 
 	monitor = {

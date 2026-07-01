@@ -11,7 +11,6 @@ local blacklistMethods = {
 	Frame = "Frame",
 	Memory = "MemGraph",
 	Ping = "PingGraph",
-	Pressure = "Pressure",
 }
 
 function module.register(item)

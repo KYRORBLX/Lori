@@ -106,8 +106,10 @@ function Tooltip:position()
 	local x = mouse.X - stackPosition.X
 	local y = mouse.Y - stackPosition.Y - textHeight - render:scaled(34)
 
-	x = math.clamp(x, math.floor(textWidth / 2), stackSize.X - math.floor(textWidth / 2))
-	y = math.clamp(y, textHeight, stackSize.Y)
+	local minX = math.floor(textWidth / 2)
+	local maxX = stackSize.X - math.floor(textWidth / 2)
+	x = math.clamp(x, math.min(minX, maxX), math.max(minX, maxX))
+	y = math.clamp(y, math.min(textHeight, stackSize.Y), math.max(textHeight, stackSize.Y))
 
 	local shadowPad = render:scaled(4)
 	self.shadow.Size = UDim2.fromOffset(textWidth + shadowPad, textHeight + shadowPad)

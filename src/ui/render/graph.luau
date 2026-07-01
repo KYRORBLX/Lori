@@ -255,12 +255,22 @@ function Graph:headLine(card)
 	local head = `{name}: {value}`
 
 	if #card.window > 0 then
-		local stats = render.format:joinFields({
-			render.format:field("min", self:formatValue(card, card.minSeen)),
-			render.format:field("max", self:formatValue(card, card.maxSeen)),
-			render.format:field("avg", self:formatValue(card, card.avgSeen)),
-		})
-		head ..= ` {stats}`
+		local fields
+		if card.lowStats then
+			fields = {
+				render.format:field("1% low", self:formatValue(card, card.low1Seen)),
+				render.format:field("0.1% low", self:formatValue(card, card.low01Seen)),
+				render.format:field("avg", self:formatValue(card, card.avgSeen)),
+			}
+		else
+			fields = {
+				render.format:field("min", self:formatValue(card, card.minSeen)),
+				render.format:field("max", self:formatValue(card, card.maxSeen)),
+				render.format:field("avg", self:formatValue(card, card.avgSeen)),
+			}
+		end
+
+		head ..= ` {render.format:joinFields(fields)}`
 	end
 
 	return head
@@ -339,6 +349,30 @@ function Graph:updateStats(card)
 	card.minSeen = low == math.huge and 0 or low
 	card.maxSeen = high == -math.huge and 0 or high
 	card.avgSeen = #card.window > 0 and total / #card.window or 0
+
+	if card.lowStats then
+		local pool = #card.history > 0 and card.history or card.samples
+		card.low1Seen = self:lowAverage(pool, 0.01)
+		card.low01Seen = self:lowAverage(pool, 0.001)
+	end
+end
+
+function Graph:lowAverage(samples, fraction)
+	local count = #samples
+	if count == 0 then
+		return 0
+	end
+
+	local sorted = table.clone(samples)
+	table.sort(sorted)
+
+	local take = math.max(1, math.floor(count * fraction))
+	local total = 0
+	for index = 1, take do
+		total += sorted[index]
+	end
+
+	return total / take
 end
 
 function Graph:autoRange(card)
@@ -422,6 +456,8 @@ function Graph:make(name, options)
 		failAt = tonumber(options.failAt),
 		warnBelow = tonumber(options.warnBelow),
 		failBelow = tonumber(options.failBelow),
+		lowStats = options.lowStats == true,
+		history = {},
 		hoveredIndex = nil,
 		display = "--",
 		textSize = Vector2.zero,
@@ -429,6 +465,8 @@ function Graph:make(name, options)
 		minSeen = 0,
 		maxSeen = 0,
 		avgSeen = 0,
+		low1Seen = 0,
+		low01Seen = 0,
 		dead = false,
 	}
 
@@ -556,6 +594,23 @@ function Graph:push(name, value)
 	self:autoRange(card)
 
 	self.render:layout()
+end
+
+function Graph:record(name, value)
+	local card = self.cards[name]
+	if not card or card.dead or not card.lowStats then
+		return
+	end
+
+	value = tonumber(value)
+	if value == nil then
+		return
+	end
+
+	table.insert(card.history, value)
+	while #card.history > self.render.config.statsSamples do
+		table.remove(card.history, 1)
+	end
 end
 
 function Graph:rescale(name, factor)
