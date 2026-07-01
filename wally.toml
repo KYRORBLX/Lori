@@ -1,6 +1,6 @@
 [package]
 name = "kyrorblx/lori"
-version = "0.1.3"
+version = "0.1.7"
 registry = "https://github.com/UpliftGames/wally-index"
 realm = "shared"
 description = "Small Roblox debug UI library"
