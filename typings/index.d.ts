@@ -38,6 +38,7 @@ interface LoriToken {
 }
 
 interface LoriWatch {
+	readonly connected: boolean;
 	disconnect(): void;
 }
 
@@ -46,11 +47,14 @@ interface LoriWatchOptions {
 	action?: string;
 	scope?: string;
 	tone?: Tone;
+	pinned?: boolean;
+	order?: number;
 }
 
 interface LoriGraphOptions {
 	tone?: Tone;
-	style?: "bars";
+	/** Every graph renders with the built-in bar style; there's no other option to pass here. */
+	style?: never;
 	unit?: string;
 	range?: [number, number];
 	warnAt?: number;
@@ -199,7 +203,7 @@ interface LoriStatic {
 		};
 	};
 	Themes: {
-		Default: Required<LoriTheme>;
+		Default: Readonly<Required<LoriTheme>>;
 	};
 }
 
