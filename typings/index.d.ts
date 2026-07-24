@@ -1,3 +1,5 @@
+/// <reference types="@rbxts/types" />
+
 type Tone = "trace" | "phase" | "success" | "warn" | "error";
 
 type Fields = Record<string, unknown>;
@@ -36,6 +38,7 @@ interface LoriToken {
 }
 
 interface LoriWatch {
+	readonly connected: boolean;
 	disconnect(): void;
 }
 
@@ -44,11 +47,14 @@ interface LoriWatchOptions {
 	action?: string;
 	scope?: string;
 	tone?: Tone;
+	pinned?: boolean;
+	order?: number;
 }
 
 interface LoriGraphOptions {
 	tone?: Tone;
-	style?: "bars";
+	/** Every graph renders with the built-in bar style; there's no other option to pass here. */
+	style?: never;
 	unit?: string;
 	range?: [number, number];
 	warnAt?: number;
@@ -65,13 +71,15 @@ interface LoriGraph {
 	remove(): void;
 }
 
+// FPS/Frame/Memory/Ping are plain closures in the Luau source (dot-call);
+// only addItem is a real method.
 interface LoriItemBlacklist {
 	Blacklist: string[];
 	addItem(name: string): LoriItemBlacklist;
-	FPS(): LoriItemBlacklist;
-	Frame(): LoriItemBlacklist;
-	Memory(): LoriItemBlacklist;
-	Ping(): LoriItemBlacklist;
+	FPS: () => LoriItemBlacklist;
+	Frame: () => LoriItemBlacklist;
+	Memory: () => LoriItemBlacklist;
+	Ping: () => LoriItemBlacklist;
 }
 
 interface LoriChannel {
@@ -144,17 +152,58 @@ interface LoriApi {
 	error(scope?: string, action?: string, fields?: Fields, duration?: number): void;
 }
 
-interface LoriStatic extends LoriApi {
-	create(options?: LoriOptions): LoriApi;
+// The top-level Lori module forwards to a default client through plain
+// functions (no self), so every static member must be a function property —
+// method syntax would make roblox-ts emit colon calls and shift arguments.
+interface LoriStatic {
+	create: (options?: LoriOptions) => LoriApi;
+
+	mount: (parent?: Instance, options?: LoriOptions) => void;
+	unmount: () => void;
+	destroy: () => void;
+	setVisible: (visible: boolean) => boolean;
+	toggleVisible: (force?: boolean) => boolean;
+	show: () => boolean;
+	hide: () => boolean;
+	setTheme: (theme: LoriTheme) => void;
+	setTemplate: (template: unknown, blacklist?: LoriItemBlacklist | string[]) => void;
+	push: (event?: LoriEvent | string) => void;
+	dismiss: (key: string) => void;
+	clear: () => void;
+
+	begin: (scope?: string, action?: string) => LoriToken;
+	finish: (token: LoriToken, fields?: Fields) => number;
+	record: (scope?: string, action?: string, elapsedMs?: number, fields?: Fields) => void;
+	time: (scope?: string, action?: string) => (fields?: Fields) => number;
+	measure: <T>(scope: string | undefined, action: string | undefined, callback: () => T) => LuaTuple<[T, number]>;
+	watch: (key: string, fields: Fields, options?: LoriWatchOptions) => LoriWatch;
+	graph: (name: string, options?: LoriGraphOptions) => LoriGraph;
+	progress: (scope?: string, action?: string, duration?: number, fields?: Fields) => void;
+	inspect: (scope: string | undefined, value: unknown, duration?: number) => void;
+	channel: (scope: string) => LoriChannel;
+	group: (scope: string) => LoriChannel;
+
+	raycast: (scope: string | undefined, origin: Vector3, direction: Vector3, params?: RaycastParams) => RaycastResult | undefined;
+	spherecast: (scope: string | undefined, origin: Vector3, radius: number, direction: Vector3, params?: RaycastParams) => RaycastResult | undefined;
+	blockcast: (scope: string | undefined, cframe: CFrame, size: Vector3, direction: Vector3, params?: RaycastParams) => RaycastResult | undefined;
+
+	trace: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	info: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	phase: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	success: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	warn: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	fail: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+	error: (scope?: string, action?: string, fields?: Fields, duration?: number) => void;
+
 	Templates: {
 		Performance: () => unknown;
 		Empty: () => unknown;
 		ItemBlacklister: {
-			New(): LoriItemBlacklist;
+			New: () => LoriItemBlacklist;
 		};
 	};
 	Themes: {
-		Default: Required<LoriTheme>;
+		Default: Readonly<Required<LoriTheme>>;
 	};
 }
 
